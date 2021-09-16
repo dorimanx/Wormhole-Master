@@ -2,33 +2,35 @@
 using System.Xml.Serialization;
 using Torch;
 using Torch.Collections;
+using Torch.Views;
 
 namespace Wormhole
 {
     public class Config : ViewModel
     {
-        private bool _allowInFaction;
-        private bool _autoSend;
-        private bool _exportProjectorGrids;
-        private string _folder = "";
+        private bool _saveOnExit = false;
+        private bool _saveOnEnter = false;
+        private bool _allowInFaction = false;
         private bool _includeConnectedGrids = true;
+        private bool _exportProjectorGrids = false;
 
-        private string _jumpDriveSubid = "WormholeDrive";
-        private bool _playerRespawn = true;
-        private bool[] _playerRespawnType = {false, false};
-
-        private double _radiusGate = 180;
-        private bool _saveOnEnter;
-
-        private bool _saveOnExit;
+        private string _jumpDriveSubId = "WormholeDrive";
         private string _thisIp = "";
-        private int _tick = 50;
-        private bool _workWithAllJd;
 
-        [XmlIgnore] public MtObservableList<WormholeGate> WormholeGates { get; } = new();
+        private double _GateRadius = 180;
+        private string _folder = "";
+        private int _tick = 240;
+        private bool _playerRespawn = true;
+        private bool _workWithAllJd = false;
+        private bool _autoSend = false;
+        private bool[] _playerRespawnType = new bool[] { false, false };
+        private bool _KeepOwnership = false;
+        private bool _gridBackup = false;
 
+        [XmlIgnore]
+        public MtObservableList<WormholeGate> WormholeGates { get; } = new MtObservableList<WormholeGate>();
         [XmlElement("WormholeGate")]
-        public WormholeGate[] WormholeGatesXml
+        public WormholeGate[] WormholeGates_xml
         {
             get => WormholeGates.ToArray();
             set
@@ -38,8 +40,8 @@ namespace Wormhole
 
                 for (var i = 0; i < value.Length; i++)
                 {
-                    var wormhole = value[i];
-                    WormholeGates.Add(wormhole);
+                    var Wormhole = value[i];
+                    WormholeGates.Add(Wormhole);
                 }
             }
         }
@@ -50,72 +52,82 @@ namespace Wormhole
             set => SetValue(ref _playerRespawnType, value);
         }
 
+        [Display(Name = "Save Server On Grid Exit", Description = "Warning! May Cause Lag")]
         public bool SaveOnExit
         {
             get => _saveOnExit;
             set => SetValue(ref _saveOnExit, value);
         }
-
+        [Display(Name = "Save Server On Grid Enter", Description = "Warning! May Cause Lag")]
         public bool SaveOnEnter
         {
             get => _saveOnEnter;
             set => SetValue(ref _saveOnEnter, value);
         }
 
+        [Display(Name = "Allow Faction Members")]
         public bool AllowInFaction
         {
             get => _allowInFaction;
             set => SetValue(ref _allowInFaction, value);
         }
 
+        [Display(Name = "Keep Connected Grids", Description = "Keep grids linked by connector")]
         public bool IncludeConnectedGrids
         {
             get => _includeConnectedGrids;
             set => SetValue(ref _includeConnectedGrids, value);
         }
 
+        [Display(Name = "Keep projector blueprints")]
         public bool ExportProjectorBlueprints
         {
             get => _exportProjectorGrids;
             set => SetValue(ref _exportProjectorGrids, value);
         }
 
-        public string JumpDriveSubid
+        [Display(Name = "JumpDrive SubtypeId", Description = "SubtypeId of your jump drive/wormhole stabilizer")]
+        public string JumpDriveSubId
         {
-            get => _jumpDriveSubid;
-            set => SetValue(ref _jumpDriveSubid, value);
+            get => _jumpDriveSubId;
+            set => SetValue(ref _jumpDriveSubId, value);
         }
 
+        [Display(Name = "Server IP:Port (for reconnecting)")]
         public string ThisIp
         {
             get => _thisIp;
             set => SetValue(ref _thisIp, value);
         }
 
-        public double RadiusGate
+        public double GateRadius
         {
-            get => _radiusGate;
-            set => SetValue(ref _radiusGate, value);
+            get => _GateRadius;
+            set => SetValue(ref _GateRadius, value);
         }
 
+        [Display(Name = "Folder", Description = "Must be shared across all torches")]
         public string Folder
         {
             get => _folder;
             set => SetValue(ref _folder, value);
         }
 
+        [Display(Name = "Tick Rate", Description = "Wormhole runs once out of x ticks")]
         public int Tick
         {
             get => _tick;
             set => SetValue(ref _tick, value);
         }
 
+        [Display(Name = "Respawn Players", Description = "Keep players in cryos/beds/cockpits")]
         public bool PlayerRespawn
         {
             get => _playerRespawn;
             set => SetValue(ref _playerRespawn, value);
         }
 
+        [Display(Name = "Work With All Jump Drives")]
         public bool WorkWithAllJd
         {
             get => _workWithAllJd;
@@ -126,6 +138,19 @@ namespace Wormhole
         {
             get => _autoSend;
             set => SetValue(ref _autoSend, value);
+        }
+
+        [Display(Name = "Keep Ownership", Description = "Keep ownership & builtBy on blocks. If false, all blocks will be transferred to player that requested jump")]
+        public bool KeepOwnership
+        {
+            get => _KeepOwnership;
+            set => SetValue(ref _KeepOwnership, value);
+        }
+
+        public bool GridBackup
+        {
+            get => _gridBackup;
+            set => SetValue(ref _gridBackup, value);
         }
     }
 }

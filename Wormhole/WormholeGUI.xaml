@@ -16,7 +16,7 @@
             <TextBlock Grid.Column="0" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="left"
                        Text="Wormhole" FontWeight="Bold" FontSize="16" Margin="5" />
             <Button Grid.Column="1" Grid.Row="0" MaxWidth="100" Content="Save Config" Margin="5"
-                    Click="SaveButton_OnClick" HorizontalAlignment="Right" />
+	    		Click="SaveButton_OnClick" HorizontalAlignment="Right"></Button>
         </Grid>
         <Grid>
             <Grid.ColumnDefinitions>
@@ -92,9 +92,10 @@
                                        Height="16" Grid.ColumnSpan="2" />
                             <CheckBox Grid.Column="1" Grid.Row="7" Name="SaveOnEnter" Margin="5"
                                       IsChecked="{Binding SaveOnEnter}" />
-                            <!--
+
                             <TextBlock   Grid.Column="0" Grid.Row ="8" VerticalAlignment="Center" Text="Grid Backup" Margin="5,6" Height="16" Grid.ColumnSpan="2"/>
                             <CheckBox    Grid.Column="1" Grid.Row ="8" Name="GridBackup" Margin="5" IsChecked="{Binding GridBackup}"/>
+                            <!--
                             <TextBlock   Grid.Column="0" Grid.Row ="9" VerticalAlignment="Center" Text="Days To Save Backup Grids" Margin="5,6" Height="16" Grid.ColumnSpan="2"/>
                             <TextBox     Grid.Column="1" Grid.Row ="9" Name="DaysToSaveGrids" Margin="5" Text="{Binding Folder}" Grid.ColumnSpan="2"/>
                             -->
@@ -112,7 +113,7 @@
                                       IsChecked="{Binding ExportProjectorBlueprints}" Name="ExportProjectorBlueprints" />
                             <TextBlock Grid.Column="0" Grid.Row="13" VerticalAlignment="Center"
                                        Text="SubtypeId of your jumpdrive" Margin="5,6" Height="16" />
-                            <TextBox Grid.Column="1" Grid.Row="13" Margin="5" Text="{Binding JumpDriveSubid}"
+                            <TextBox Grid.Column="1" Grid.Row="13" Margin="5" Text="{Binding JumpDriveSubId}"
                                      Name="JumpDriveSubid" Grid.ColumnSpan="2" />
                             <TextBlock Grid.Column="0" Grid.Row="14" VerticalAlignment="Center"
                                        Text="Work With All Jump Drives" Margin="5,6" Height="16" />
@@ -217,7 +218,7 @@
                             <TextBlock Grid.Column="0" Grid.Row="8" VerticalAlignment="Center" Text="Wormhole Radius"
                                        Margin="5,6" Height="16" />
                             <TextBox Name="RadiusGate" Grid.Column="1" Grid.Row="8" Margin="5"
-                                     Text="{Binding RadiusGate}" />
+                                     Text="{Binding GateRadius}" />
                             <TextBlock Grid.Column="0" Grid.Row="11" VerticalAlignment="Center"
                                        Text="Auto Send if Single Send To (Disables Drives on Jump)" Margin="5,6"
                                        Height="16" />

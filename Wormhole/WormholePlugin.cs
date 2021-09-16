@@ -4,65 +4,64 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Controls;
-using System.Xml;
 using System.Xml.Serialization;
 using NLog;
 using ProtoBuf;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Engine.Multiplayer;
-using Sandbox.Engine.Utils;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Character;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
+using Sandbox.ModAPI;
 using Torch;
 using Torch.API;
 using Torch.API.Plugins;
 using Torch.Mod;
 using Torch.Mod.Messages;
+using Torch.Utils;
 using VRage;
 using VRage.Game;
-using VRage.Game.ObjectBuilder;
-using VRage.ObjectBuilders;
+using VRage.Game.Entity;
+using VRage.Game.ModAPI;
+using VRage.Network;
 using VRageMath;
 
 namespace Wormhole
 {
-    public class WormholePlugin : TorchPluginBase, IWpfPlugin
+    public class WormholePlugin : TorchPluginBase, IWpfPlugin, ITorchPlugin
     {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         private readonly ConcurrentDictionary<ulong, (Utilities.TransferFileInfo, TransferFile, Vector3D, BoundingSphereD)>
-            _queuedSpawns = new();
+            _queuedSpawns = new ConcurrentDictionary<ulong, (Utilities.TransferFileInfo, TransferFile, Vector3D, BoundingSphereD)>();
 
         private Persistent<Config> _config;
-
         private Gui _control;
         public const string AdminGatesConfig = "admingatesconfig";
-        private const string AdminGatesConfirmReceivedFolder = "admingatesconfirmreceived";
-        private const string AdminGatesConfirmSentFolder = "admingatesconfirmsent";
-
         public const string AdminGatesFolder = "admingates";
         private Task _saveOnEnterTask;
-
-        // The actual task of saving the game on exit or enter
         private Task _saveOnExitTask;
-
         private int _tick;
-        
         private string _gridDir;
         private string _gridDirSent;
         private string _gridDirReceived;
-        private readonly XmlSerializer _requestSerializer = new(typeof(Request));
+        private string _gridDirBackup;
+
+        [ReflectedMethodInfo(typeof(MyVisualScriptLogicProvider), "CloseRespawnScreen")]
+        private static readonly MethodInfo _closeRespawnScreenMethod = null;
+
+        private static readonly Lazy<Action> _closeRespawnScreenAction = new Lazy<Action>(() => _closeRespawnScreenMethod.CreateDelegate<Action>());
 
         public static WormholePlugin Instance { get; private set; }
+
         public Config Config => _config?.Data;
 
-        public UserControl GetControl() => _control ??= new(this);
+        public UserControl GetControl() => _control ??= new Gui(this);
 
         public override void Init(ITorchBase torch)
         {
@@ -72,15 +71,15 @@ namespace Wormhole
             Torch.GameStateChanged += (_, state) =>
             {
                 if (state == TorchGameState.Loaded)
-                    MyMultiplayer.Static.ClientJoined += MultiplayerOnClientJoined;
+                    MyMultiplayer.Static.ClientJoined += OnClientConnected;
             };
         }
 
-        private void MultiplayerOnClientJoined(ulong clientId, string name)
+        internal void OnClientConnected(ulong clientId, string name)
         {
             if (!_queuedSpawns.ContainsKey(clientId))
                 return;
-            
+
             _queuedSpawns.TryRemove(clientId, out var tuple);
             var (transferFileInfo, transferFile, gamePoint, gate) = tuple;
             try
@@ -103,7 +102,8 @@ namespace Wormhole
                 foreach (var wormhole in Config.WormholeGates)
                 {
                     var gatePoint = new Vector3D(wormhole.X, wormhole.Y, wormhole.Z);
-                    var gate = new BoundingSphereD(gatePoint, Config.RadiusGate);
+                    var gate = new BoundingSphereD(gatePoint, Config.GateRadius);
+
                     WormholeTransferOut(wormhole.SendTo, gatePoint, gate);
                     WormholeTransferIn(wormhole.Name.Trim(), gatePoint, gate);
                 }
@@ -117,8 +117,8 @@ namespace Wormhole
             {
                 //check transfer status
                 foreach (var file in Directory.EnumerateFiles(_gridDirReceived, "*.sbc"))
-                    //if all other files have been correctly removed then remove safety to stop duplication
                 {
+                    //if all other files have been correctly removed then remove safety to stop duplication
                     var fileName = Path.GetFileName(file);
                     if (!File.Exists(Path.Combine(_gridDirSent, fileName)) &&
                         !File.Exists(Path.Combine(_gridDir, fileName)))
@@ -152,48 +152,66 @@ namespace Wormhole
 
         public void WormholeTransferOut(string sendTo, Vector3D gatePoint, BoundingSphereD gate)
         {
-            foreach (var grid in MyEntities.GetTopMostEntitiesInSphere(ref gate).OfType<MyCubeGrid>())
+            foreach (var grid in MyAPIGateway.Entities.GetTopMostEntitiesInSphere(ref gate).OfType<IMyCubeGrid>())
             {
-                var gts = grid.GridSystems.TerminalSystem;
-                if (gts == null)
-                    continue;
+                var gts = MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid);
 
-                var jumpDrives = gts.Blocks.OfType<MyJumpDrive>().ToList();
-
-                foreach (var jumpDrive in jumpDrives)
-                    WormholeTransferOutFile(sendTo, grid, jumpDrive, gatePoint, jumpDrives);
-            }
-        }
-
-        private void WormholeTransferOutFile(string sendTo, MyCubeGrid grid, MyJumpDrive wormholeDrive,
-            Vector3D gatePoint, IEnumerable<MyJumpDrive> wormholeDrives)
-        {
-            if (Config.JumpDriveSubid.Split(',').All(s => s.Trim() != wormholeDrive.BlockDefinition.Id.SubtypeName) &&
-                !Config.WorkWithAllJd)
-                return;
-
-            var reply = new Request
-            {
-                PluginRequest = false,
-                Destination = null,
-                Destinations = sendTo.Split(',').Select(s => s.Trim()).ToArray()
-            };
-
-            string pickedDestination = default;
-            if (!string.IsNullOrEmpty(wormholeDrive.CustomData))
-            {
-                var request = (Request)_requestSerializer.Deserialize(new StringReader(wormholeDrive.CustomData));
-                if (request is {PluginRequest: true, Destination: { }})
+                if (gts != null)
                 {
-                    if (sendTo.Split(',').Any(s => s.Trim() == request.Destination.Trim())) 
-                        pickedDestination = request.Destination.Trim();
+                    var WormholeDrives = new List<IMyJumpDrive>();
+                    gts.GetBlocksOfType(WormholeDrives);
+
+                    foreach (var WormholeDrive in WormholeDrives)
+                    {
+                        WormholeTransferOutFile(sendTo, grid, WormholeDrive, gatePoint, WormholeDrives);
+                    }
                 }
             }
 
-            using (var writer = new StringWriter())
+        }
+
+        private void WormholeTransferOutFile(string sendTo, IMyCubeGrid grid, IMyJumpDrive wormholeDrive,
+            Vector3D gatePoint, IEnumerable<IMyJumpDrive> wormholeDrives)
+        {
+            if (Config.JumpDriveSubId.Split(',').All(s => s.Trim() != wormholeDrive.BlockDefinition.SubtypeId) && !Config.WorkWithAllJd)
+                return;
+
+            Request request = default;
+            try
             {
-                _requestSerializer.Serialize(writer, reply);
-                wormholeDrive.CustomData = writer.ToString();
+                request = MyAPIGateway.Utilities.SerializeFromXML<Request>(wormholeDrive.CustomData);
+            }
+            catch { }
+
+            string pickedDestination = default;
+
+            if (request != null)
+            {
+                if (request.PluginRequest)
+                {
+                    if (request.Destination != null)
+                    {
+                        if (sendTo.Split(',').Any(s => s.Trim() == request.Destination.Trim()))
+                            pickedDestination = request.Destination.Trim();
+                    }
+                    Request reply = new Request
+                    {
+                        PluginRequest = false,
+                        Destination = null,
+                        Destinations = sendTo.Split(',').Select(s => s.Trim()).ToArray()
+                    };
+                    wormholeDrive.CustomData = MyAPIGateway.Utilities.SerializeToXML(reply);
+                }
+            }
+            else
+            {
+                Request reply = new Request
+                {
+                    PluginRequest = false,
+                    Destination = null,
+                    Destinations = sendTo.Split(',').Select(s => s.Trim()).ToArray()
+                };
+                wormholeDrive.CustomData = MyAPIGateway.Utilities.SerializeToXML(reply);
             }
 
             if (Config.AutoSend && sendTo.Split(',').Length == 1)
@@ -202,25 +220,24 @@ namespace Wormhole
             if (pickedDestination == null)
                 return;
 
-            var playerInCharge = Sync.Players.GetControllingPlayer(grid);
+            var playerInCharge = MyAPIGateway.Players.GetPlayerControllingEntity(grid);
 
-            if (playerInCharge?.Identity is null || !wormholeDrive.CanJumpAndHasAccess(playerInCharge.Identity.IdentityId) ||
-                !Utilities.HasRightToMove(playerInCharge, grid))
+            if (playerInCharge?.Identity == null || !wormholeDrive.HasPlayerAccess(playerInCharge.Identity.IdentityId) ||
+                    !Utilities.HasRightToMove(playerInCharge, (MyCubeGrid)grid))
                 return;
 
-            wormholeDrive.CurrentStoredPower = 0;
+            wormholeDrive.CurrentStoredPower = 0f;
             foreach (var disablingWormholeDrive in wormholeDrives)
-                if (Config.JumpDriveSubid.Split(',')
-                        .Any(s => s.Trim() == disablingWormholeDrive.BlockDefinition.Id.SubtypeName) ||
-                    Config.WorkWithAllJd)
+            {
+                if (Config.JumpDriveSubId.Split(',')
+                        .Any(s => s.Trim() == disablingWormholeDrive.BlockDefinition.SubtypeId) ||
+                        Config.WorkWithAllJd)
                     disablingWormholeDrive.Enabled = false;
-            var grids = Utilities.FindGridList(grid.EntityId.ToString(), playerInCharge.Character,
+            }
+            var grids = Utilities.FindGridList(grid.EntityId.ToString(), (MyCharacter)playerInCharge.Character,
                 Config.IncludeConnectedGrids);
 
-            if (grids == null)
-                return;
-
-            if (grids.Count == 0)
+            if (grids == null || grids.Count == 0)
                 return;
 
             MyVisualScriptLogicProvider.CreateLightning(gatePoint);
@@ -229,100 +246,113 @@ namespace Wormhole
             if (Config.WormholeGates.Any(s => s.Name.Trim() == pickedDestination.Split(':')[0]))
             {
                 foreach (var internalWormhole in Config.WormholeGates)
+                {
                     if (internalWormhole.Name.Trim() == pickedDestination.Split(':')[0].Trim())
                     {
                         var box = wormholeDrive.GetTopMostParent().PositionComp.WorldAABB;
                         var toGatePoint = new Vector3D(internalWormhole.X, internalWormhole.Y, internalWormhole.Z);
-                        var toGate = new BoundingSphereD(toGatePoint, Config.RadiusGate);
-                        Utilities.UpdateGridsPositionAndStopLive(wormholeDrive.GetTopMostParent(),
-                            Utilities.FindFreePos(toGate, (float) (Vector3D.Distance(box.Center, box.Max) + 50)) ??
-                            Vector3D.Zero);
+
+                        Utilities.UpdateGridsPositionAndStopLive(newPosition: Utilities.FindFreePos(new BoundingSphereD(toGatePoint, Config.GateRadius),
+                            (float)(Vector3D.Distance(box.Center, box.Max) + 50.0)) ?? Vector3D.Zero, grids: wormholeDrive.GetTopMostParent());
+
                         MyVisualScriptLogicProvider.CreateLightning(toGatePoint);
                     }
+                }
+                return;
             }
-            else
+
+            var destination = pickedDestination.Split(':');
+
+            if (3 != destination.Length)
+                throw new ArgumentException("failed parsing destination '" + destination?.ToString() + "'");
+
+            Utilities.TransferFileInfo transferFileInfo = new Utilities.TransferFileInfo
             {
-                var destination = pickedDestination.Split(':');
+                DestinationWormhole = destination[0],
+                SteamUserId = playerInCharge.SteamUserId,
+                PlayerName = playerInCharge.DisplayName,
+                GridName = grid.DisplayName,
+                Time = DateTime.Now
+            };
 
-                if (3 != destination.Length)
-                    throw new ArgumentException("failed parsing destination '" + destination + "'");
+            Log.Info("creating filetransfer:" + transferFileInfo.CreateLogString());
 
-                var transferFileInfo = new Utilities.TransferFileInfo
+            var filename = transferFileInfo.CreateFileName();
+            var objectBuilders = new List<MyObjectBuilder_CubeGrid>();
+
+            foreach (var mygrid in grids)
+            {
+                if (mygrid.GetObjectBuilder() is not MyObjectBuilder_CubeGrid objectBuilder)
+                    throw new ArgumentException(mygrid?.ToString() + " has a ObjectBuilder thats not for a CubeGrid");
+
+                objectBuilders.Add(objectBuilder);
+            }
+
+            var identitiesMap = (from b in objectBuilders.SelectMany((MyObjectBuilder_CubeGrid b) => b.CubeBlocks).SelectMany(GetIds).Distinct()
+                                 where !Sync.Players.IdentityIsNpc(b)
+                                 select b).ToDictionary((long b) => b, (long b) => Sync.Players.TryGetIdentity(b).GetObjectBuilder());
+
+            var sittingPlayerIdentityIds = new HashSet<long>();
+            foreach (var cubeBlock in objectBuilders.SelectMany((MyObjectBuilder_CubeGrid cubeGrid) => cubeGrid.CubeBlocks))
+            {
+                if (!Config.ExportProjectorBlueprints)
                 {
-                    DestinationWormhole = destination[0],
-                    SteamUserId = playerInCharge.Id.SteamId,
-                    PlayerName = playerInCharge.DisplayName,
-                    GridName = grid.DisplayName,
-                    Time = DateTime.Now
-                };
-
-                Log.Info("creating filetransfer:" + transferFileInfo.CreateLogString());
-                var filename = transferFileInfo.CreateFileName();
-
-                var objectBuilders = new List<MyObjectBuilder_CubeGrid>();
-                foreach (var mygrid in grids)
-                {
-                    if (mygrid.GetObjectBuilder() is not MyObjectBuilder_CubeGrid objectBuilder)
-                        throw new ArgumentException(mygrid + " has a ObjectBuilder thats not for a CubeGrid");
-                    objectBuilders.Add(objectBuilder);
+                    if (cubeBlock is MyObjectBuilder_ProjectorBase projector)
+                        projector.ProjectedGrids = null;
                 }
 
-                static IEnumerable<long> GetIds(MyObjectBuilder_CubeBlock block)
+                if (cubeBlock is MyObjectBuilder_Cockpit cockpit)
                 {
-                    if (block.Owner > 0)
-                        yield return block.Owner;
-                    if (block.BuiltBy > 0)
-                        yield return block.BuiltBy;
+                    MyObjectBuilder_Character pilot = cockpit.Pilot;
+                    if (pilot != null && pilot.OwningPlayerIdentityId.HasValue)
+                    {
+                        ulong playerSteamId = Sync.Players.TryGetSteamId(cockpit.Pilot.OwningPlayerIdentityId.Value);
+                        sittingPlayerIdentityIds.Add(cockpit.Pilot.OwningPlayerIdentityId.Value);
+                        ModCommunication.SendMessageTo(new JoinServerMessage(destination[1] + ":" + destination[2]), playerSteamId);
+                    }
                 }
+            }
 
-                var identitiesMap = objectBuilders.SelectMany(static b => b.CubeBlocks)
-                    .SelectMany(GetIds).Distinct().Where(static b => !Sync.Players.IdentityIsNpc(b))
-                    .ToDictionary(static b => b, static b => Sync.Players.TryGetIdentity(b).GetObjectBuilder());
-
-                var sittingPlayerIdentityIds = new HashSet<long>();
-                foreach (var cubeBlock in objectBuilders.SelectMany(static cubeGrid => cubeGrid.CubeBlocks))
+            using (var stream = File.Create(Utilities.CreateBlueprintPath(Path.Combine(Config.Folder, "admingates"), filename)))
+            {
+                Serializer.Serialize(stream, new TransferFile
                 {
-                    if (!Config.ExportProjectorBlueprints)
-                        if (cubeBlock is MyObjectBuilder_ProjectorBase projector)
-                            projector.ProjectedGrids = null;
-                    
-                    if (cubeBlock is not MyObjectBuilder_Cockpit cockpit) continue;
-                    if (cockpit.Pilot?.OwningPlayerIdentityId == null) continue;
-                    
-                    var playerSteamId = Sync.Players.TryGetSteamId(cockpit.Pilot.OwningPlayerIdentityId.Value);
-                    sittingPlayerIdentityIds.Add(cockpit.Pilot.OwningPlayerIdentityId.Value);
-                    ModCommunication.SendMessageTo(new JoinServerMessage(destination[1] + ":" + destination[2]),
-                        playerSteamId);
-                }
-
-                using (var stream = File.Create(Utilities.CreateBlueprintPath(Path.Combine(Config.Folder, AdminGatesFolder), filename)))
-                        Serializer.Serialize(stream, new TransferFile
+                    Grids = objectBuilders,
+                    IdentitiesMap = identitiesMap,
+                    PlayerIdsMap = (from b in identitiesMap.Select(delegate (KeyValuePair<long, MyObjectBuilder_Identity> b)
                         {
-                            Grids = objectBuilders,
-                            IdentitiesMap = identitiesMap,
-                            PlayerIdsMap = identitiesMap.Select(static b =>
-                            {
-                                Sync.Players.TryGetPlayerId(b.Key, out var id);
-                                return (b.Key, id.SteamId);
-                            }).Where(static b => b.SteamId > 0)
-                                .ToDictionary(static b => b.Key, static b => b.SteamId)
-                        });
+                            Sync.Players.TryGetPlayerId(b.Key, out var result);
+                            return (b.Key, result.SteamId);
+                        })
+                                    where b.SteamId != 0
+                                    select b).ToDictionary<(long, ulong), long, ulong>(((long Key, ulong SteamId) b) => b.Key, ((long Key, ulong SteamId) b) => b.SteamId)
+                });
+            }
 
-                foreach (var identity in sittingPlayerIdentityIds.Select(Sync.Players.TryGetIdentity)
-                    .Where(b => b.Character is { })) KillCharacter(identity.Character);
-                foreach (var cubeGrid in grids)
-                {
-                    cubeGrid.Close();
-                }
-                // Saves the game if enabled in config.
-                if (Config.SaveOnExit)
-                {
-                    // (re)Starts the task if it has never been started o´r is done
-                    if (_saveOnExitTask is null || _saveOnExitTask.IsCompleted)
-                        _saveOnExitTask = Torch.Save();
-                }
+            foreach (MyIdentity identity in from b in sittingPlayerIdentityIds.Select(Sync.Players.TryGetIdentity)
+                                            where b.Character != null
+                                            select b)
+            {
+                Utilities.KillCharacter(identity.Character);
+            }
 
-                File.Create(Utilities.CreateBlueprintPath(_gridDirSent, filename)).Dispose();
+            foreach (var cubeGrid in grids)
+            {
+                cubeGrid?.Close();
+            }
+
+            // Saves the game if enabled in config.
+            if (Config.SaveOnExit && (_saveOnExitTask == null || _saveOnExitTask.IsCompleted))
+                // (re)Starts the task if it has never been started o´r is done
+                _saveOnExitTask = Torch.Save();
+
+            File.Create(Utilities.CreateBlueprintPath(_gridDirSent, filename)).Dispose();
+            static IEnumerable<long> GetIds(MyObjectBuilder_CubeBlock block)
+            {
+                if (block.Owner > 0)
+                    yield return block.Owner;
+                if (block.BuiltBy > 0)
+                    yield return block.BuiltBy;
             }
         }
 
@@ -332,52 +362,63 @@ namespace Wormhole
 
             var changes = false;
 
-            foreach (var file in Directory.EnumerateFiles(_gridDir, "*.sbc")
-                    .Where(s => Path.GetFileNameWithoutExtension(s).Split('_')[0] == wormholeName))
-                //if file not null if file exists if file is done being sent and if file hasnt been received before
+            foreach (string file in from s in Directory.EnumerateFiles(_gridDir, "*.sbc")
+                                    where Path.GetFileNameWithoutExtension(s).Split('_')[0] == wormholeName
+                                    select s)
             {
+                //if file not null if file exists if file is done being sent and if file hasnt been received before
                 var fileName = Path.GetFileName(file);
                 if (!File.Exists(file) || !File.Exists(Path.Combine(_gridDirSent, fileName)) ||
-                    File.Exists(Path.Combine(_gridDirReceived, fileName))) continue;
-                
+                    File.Exists(Path.Combine(_gridDirReceived, fileName)))
+                    continue;
+
                 Log.Info("Processing recivied grid: " + fileName);
                 var fileTransferInfo = Utilities.TransferFileInfo.ParseFileName(fileName);
-                if (fileTransferInfo is null)
+                if (fileTransferInfo == null)
                 {
                     Log.Error("Error parsing file name");
                     continue;
                 }
-                    
+
                 TransferFile transferFile;
                 try
                 {
                     using var stream = File.OpenRead(file);
                     transferFile = Serializer.Deserialize<TransferFile>(stream);
-                    if (transferFile.Grids is null || transferFile.IdentitiesMap is null)
+                    if (transferFile.Grids == null || transferFile.IdentitiesMap == null)
                         throw new InvalidOperationException("File is empty or invalid");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, $"Corrupted file at {fileName}");
+                    Log.Error(e, "Corrupted file at " + fileName);
                     continue;
                 }
 
                 // if player online, process now, else queue util player join
-                if (Sync.Players.TryGetPlayerBySteamId(fileTransferInfo.SteamUserId) is { })
+                MyCharacter character = Sync.Players.TryGetPlayerIdentity(new MyPlayer.PlayerId(fileTransferInfo.SteamUserId))?.Character;
+                if (character != null)
+                    Utilities.KillCharacter(character);
+
+                if (MyPlayerCollectionExtensions.TryGetPlayerBySteamId(Sync.Players, fileTransferInfo.SteamUserId, 0) != null)
                     WormholeTransferInQueue(transferFile, fileTransferInfo, gatePoint, gate);
                 else
                     _queuedSpawns[fileTransferInfo.SteamUserId] = (fileTransferInfo, transferFile, gatePoint, gate);
 
                 changes = true;
+                if (Config.GridBackup)
+                {
+                    string backupPath = Path.Combine(_gridDirBackup, fileName);
+                    if (!File.Exists(backupPath))
+                        File.Copy(Path.Combine(_gridDir, fileName), backupPath);
+                }
+
                 File.Delete(Path.Combine(_gridDirSent, fileName));
                 File.Delete(Path.Combine(_gridDir, fileName));
                 File.Create(Path.Combine(_gridDirReceived, fileName)).Dispose();
             }
 
             // Saves game on enter if enabled in config.
-            if (!changes || !Config.SaveOnEnter) return;
-            
-            if (_saveOnEnterTask is null || _saveOnEnterTask.IsCompleted)
+            if (changes && Config.SaveOnEnter && (_saveOnEnterTask == null || _saveOnEnterTask.IsCompleted))
                 _saveOnEnterTask = Torch.Save();
         }
 
@@ -386,10 +427,10 @@ namespace Wormhole
         {
             Log.Info("processing filetransfer:" + fileTransferInfo.CreateLogString());
 
-            var playerId = Sync.Players.TryGetPlayerIdentity(new(fileTransferInfo.SteamUserId));
+            var playerId = Sync.Players.TryGetPlayerIdentity(new MyPlayer.PlayerId(fileTransferInfo.SteamUserId));
 
             // to prevent from hungry trash collector
-            if (playerId is {})
+            if (playerId != null)
                 playerId.LastLogoutTime = DateTime.Now;
 
             var gridBlueprints = file.Grids;
@@ -400,96 +441,139 @@ namespace Wormhole
             }
 
             var identitiesToChange = new Dictionary<long, long>();
-            foreach (var (identityId, clientId) in file.PlayerIdsMap.Where(static b => !Sync.Players.TryGetPlayerId(b.Key, out _)))
+            long k;
+            ulong v;
+            foreach (var item in file.PlayerIdsMap.Where((KeyValuePair<long, ulong> b) => Sync.Players.TryGetPlayerIdentity(new MyPlayer.PlayerId(b.Value)) == null))
             {
+                item.Deconstruct(out k, out v);
+                long identityId = k;
+                ulong clientId2 = v;
                 var ob = file.IdentitiesMap[identityId];
                 ob.IdentityId = MyEntityIdentifier.AllocateId(MyEntityIdentifier.ID_OBJECT_TYPE.IDENTITY);
-                Sync.Players.CreateNewIdentity(ob);
-                Sync.Players.InitNewPlayer(new(clientId), new()
+                Sync.Players.CreateNewIdentity(ob).PerformFirstSpawn();
+                Sync.Players.InitNewPlayer(new MyPlayer.PlayerId(clientId2), new MyObjectBuilder_Player
                 {
                     IdentityId = ob.IdentityId
                 });
-                identitiesToChange[identityId] = ob.IdentityId;
             }
-            
-            foreach (var cubeBlock in gridBlueprints.SelectMany(static b => b.CubeBlocks))
+            foreach (var item2 in file.PlayerIdsMap)
             {
+                item2.Deconstruct(out k, out v);
+                long oldIdentityId = k;
+                ulong clientId = v;
+                MyIdentity identity = Sync.Players.TryGetPlayerIdentity(new MyPlayer.PlayerId(clientId));
+                identitiesToChange[oldIdentityId] = identity.IdentityId;
+                if (identity.Character != null)
+                    Utilities.KillCharacter(identity.Character);
+            }
+            MyIdentity requesterIdentity = null;
+            if (!Config.KeepOwnership)
+                requesterIdentity = Sync.Players.TryGetPlayerIdentity(new MyPlayer.PlayerId(fileTransferInfo.SteamUserId));
+
+            foreach (var cubeBlock in gridBlueprints.SelectMany((MyObjectBuilder_CubeGrid b) => b.CubeBlocks))
+            {
+                if (!Config.KeepOwnership && requesterIdentity != null)
+                {
+                    cubeBlock.Owner = requesterIdentity.IdentityId;
+                    cubeBlock.BuiltBy = requesterIdentity.IdentityId;
+                    continue;
+                }
                 if (identitiesToChange.TryGetValue(cubeBlock.BuiltBy, out var builtBy))
                     cubeBlock.BuiltBy = builtBy;
-                
+
                 if (identitiesToChange.TryGetValue(cubeBlock.Owner, out var owner))
                     cubeBlock.Owner = owner;
             }
 
             var pos = Utilities.FindFreePos(gate, Utilities.FindGridsRadius(gridBlueprints));
-            if (pos == null || !Utilities.UpdateGridsPositionAndStop(gridBlueprints, pos.Value))
+            if (!pos.HasValue || !Utilities.UpdateGridsPositionAndStop(gridBlueprints, pos.Value))
             {
                 Log.Warn("no free space available for grid '" + fileTransferInfo.GridName + "' at wormhole '" +
                          fileTransferInfo.DestinationWormhole + "'");
                 return;
             }
 
-            foreach (var cockpit in gridBlueprints.SelectMany(static grid => grid.CubeBlocks.OfType<MyObjectBuilder_Cockpit>()))
+            var savedCharacters = new Dictionary<long, MyObjectBuilder_Character>();
+            foreach (var cockpit in gridBlueprints.SelectMany((MyObjectBuilder_CubeGrid grid) => grid.CubeBlocks.OfType<MyObjectBuilder_Cockpit>()))
             {
-                if (cockpit.Pilot == null || !Config.PlayerRespawn)
+                if (cockpit.Pilot != null)
                 {
-                    cockpit.Pilot = null;
-                    continue;
+                    var pilot = cockpit.Pilot;
+                    Utilities.RemovePilot(cockpit);
+                    if (Config.PlayerRespawn && identitiesToChange.TryGetValue(pilot.OwningPlayerIdentityId.GetValueOrDefault(), out var newIdentityId))
+                        savedCharacters[newIdentityId] = pilot;
                 }
-
-                if (cockpit.Pilot.OwningPlayerIdentityId == null)
-                {
-                    Log.Info("cannot find player, removing character from cockpit");
-                    cockpit.Pilot = null;
-                    continue;
-                }
-
-                var identity = Sync.Players.TryGetIdentity(cockpit.Pilot.OwningPlayerIdentityId.Value);
-
-                if (identity.Character != null)
-                {
-                    // if there is a character, kill it and force reconnection
-                    if (!string.IsNullOrEmpty(Config.ThisIp) && Sync.Players.GetOnlinePlayers()
-                        .FirstOrDefault(b => b.Identity.IdentityId == identity.IdentityId) is { } player)
-                    {
-                        ModCommunication.SendMessageTo(new JoinServerMessage(Config.ThisIp), player.Id.SteamId);
-                        MyMultiplayer.Static.DisconnectClient(player.Id.SteamId);
-                    }
-                    KillCharacter(identity.Character);
-                }
-                identity.PerformFirstSpawn();
-                cockpit.Pilot.OwningPlayerIdentityId = identity.IdentityId;
             }
-            MyEntities.RemapObjectBuilderCollection(gridBlueprints);
-            foreach (var gridBlueprint in gridBlueprints)
-                MyEntities.CreateFromObjectBuilderParallel(gridBlueprint, true);
 
+            MyEntities.RemapObjectBuilderCollection(gridBlueprints);
+            foreach (MyObjectBuilder_CubeGrid gridBlueprint in gridBlueprints)
+            {
+                MyEntity entity = MyEntities.CreateFromObjectBuilderNoinit(gridBlueprint);
+                MyEntities.InitEntity(gridBlueprint, ref entity);
+                MyEntities.Add(entity);
+                OnGridSpawned(entity, savedCharacters);
+            }
             MyVisualScriptLogicProvider.CreateLightning(gatePosition);
         }
 
-        public static void KillCharacter(MyCharacter character)
+        private static void OnGridSpawned(MyEntity entity, IDictionary<long, MyObjectBuilder_Character> savedCharacters)
         {
-            Log.Info("killing character " + character.DisplayName);
-            if (character.IsUsing is MyCockpit cockpit)
-                cockpit.RemovePilot();
-            character.GetIdentity()?.ChangeCharacter(null);
-            
-            character.EnableBag(false);
-            character.StatComp.DoDamage(character.StatComp.Health.MaxValue);
-            character.Close();
+            MyCubeGrid grid = (MyCubeGrid)entity;
+            foreach (MyCockpit cockpit in from b in grid.GetFatBlocks().OfType<MyCockpit>()
+                                          orderby (!(b is MyCryoChamber)) ? 0 : 1
+                                          select b)
+            {
+                if (savedCharacters.Count < 1)
+                    break;
+
+                if (cockpit.Pilot != null)
+                    continue;
+
+                var (identity, ob) = savedCharacters.First();
+                savedCharacters.Remove(identity);
+                ob.OwningPlayerIdentityId = identity;
+                ob.EntityId = 0L;
+                MatrixD matrix = cockpit.WorldMatrix;
+                matrix.Translation -= Vector3.Up - Vector3.Forward;
+                ob.PositionAndOrientation = new MyPositionAndOrientation(matrix);
+                MyEntity characterEntity = MyEntities.CreateFromObjectBuilderNoinit(ob);
+                MyCharacter character = (MyCharacter)characterEntity;
+                MyEntities.InitEntity(ob, ref characterEntity);
+                MyEntities.Add(character);
+                MyIdentity myIdentity = Sync.Players.TryGetIdentity(identity);
+                Utilities.KillCharacters(myIdentity.SavedCharacters);
+                myIdentity.ChangeCharacter(character);
+                cockpit.AttachPilot(character, storeOriginalPilotWorld: false, calledFromInit: false, merged: true);
+                if (Sync.Players.TryGetPlayerId(identity, out var playerId) && Sync.Players.TryGetPlayerById(playerId, out var player))
+                {
+                    character.SetPlayer(player);
+                    Sync.Players.SetControlledEntity(Sync.Players.TryGetSteamId(identity), cockpit);
+                    Sync.Players.RevivePlayer(player);
+                    MySession.SendVicinityInformation(cockpit.CubeGrid.EntityId, new EndpointId(playerId.SteamId));
+                    MyMultiplayer.RaiseStaticEvent((IMyEventOwner _) => _closeRespawnScreenAction.Value, new EndpointId(player.Id.SteamId));
+                    Wormhole.RefreshUtil.EntityRefresh.RefreshAroundGrid(cockpit.CubeGrid);
+                }
+            }
         }
 
         private void EnsureDirectoriesCreated()
         {
-            _gridDir ??= Path.Combine(Config.Folder, AdminGatesFolder);
-            _gridDirSent ??= Path.Combine(Config.Folder, AdminGatesConfirmSentFolder);
-            _gridDirReceived ??= Path.Combine(Config.Folder, AdminGatesConfirmReceivedFolder);
+            if (_gridDir == null)
+                _gridDir = Path.Combine(Config.Folder, "admingates");
+            if (_gridDirSent == null)
+                _gridDirSent = Path.Combine(Config.Folder, "admingatesconfirmsent");
+            if (_gridDirReceived == null)
+                _gridDirReceived = Path.Combine(Config.Folder, "admingatesconfirmreceived");
+            if (_gridDirBackup == null)
+                _gridDirBackup = Path.Combine(Config.Folder, "grids_backup");
             if (!Directory.Exists(_gridDir))
                 Directory.CreateDirectory(_gridDir);
             if (!Directory.Exists(_gridDirSent))
                 Directory.CreateDirectory(_gridDirSent);
             if (!Directory.Exists(_gridDirReceived))
                 Directory.CreateDirectory(_gridDirReceived);
+            if (!Directory.Exists(_gridDirBackup))
+                Directory.CreateDirectory(_gridDirBackup);
         }
     }
 }
