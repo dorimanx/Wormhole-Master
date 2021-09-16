@@ -1,9 +1,10 @@
 
 ALE-Core/
-GameBinaries/
-TorchBinaries/
+GameBinaries
+TorchBinaries
 bin/
 obj/
 .svn/
 .git/
 .vs/
+packages
