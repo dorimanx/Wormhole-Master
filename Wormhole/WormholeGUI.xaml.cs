@@ -25,19 +25,37 @@ namespace Wormhole
         private void SaveButton_OnClick(object sender, RoutedEventArgs e)
         {
             Plugin.Save();
-            //Utilities.WormholeGateConfigUpdate();
         }
 
         private void Add_OnClick(object sender, RoutedEventArgs e)
         {
             if (Xinput.Text != string.Empty && Yinput.Text != string.Empty && Zinput.Text != string.Empty)
             {
+                var DotChar = '.';
+                var newX = Xinput.Text;
+                var newY = Yinput.Text;
+                var newZ = Zinput.Text;
+
+                if (newX.Contains(DotChar))
+                    newX = newX.Split(DotChar)[0];
+
+                if (newY.Contains(DotChar))
+                    newY = newY.Split(DotChar)[0];
+
+                if (newZ.Contains(DotChar))
+                    newZ = newZ.Split(DotChar)[0];
+
                 var newserver = new WormholeGate
                 {
-                    Name = Nameinput.Text, Description = Descriptioninput.Text, HexColor = HexColorinput.Text,
-                    SendTo = SendToinput.Text, X = Convert.ToDouble(Xinput.Text), Y = Convert.ToDouble(Yinput.Text),
-                    Z = Convert.ToDouble(Zinput.Text)
+                    Name = Nameinput.Text,
+                    Description = Descriptioninput.Text,
+                    HexColor = HexColorinput.Text,
+                    SendTo = SendToinput.Text,
+                    X = Convert.ToDouble(newX),
+                    Y = Convert.ToDouble(newY),
+                    Z = Convert.ToDouble(newZ)
                 };
+
                 if (Plugin.Config.WormholeGates.IndexOf(newserver) < 0 && Listservers.Items.IndexOf(newserver) < 0)
                 {
                     Plugin.Config.WormholeGates.Add(newserver);
@@ -93,10 +111,6 @@ namespace Wormhole
         private void LordTylusGithubLink(object sender, RoutedEventArgs e)
         {
             Process.Start("https://github.com/LordTylus");
-        }
-
-        private void AutoSend_Checked(object sender, RoutedEventArgs e)
-        {
         }
     }
 }
