@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Sounds>
+    <Sound>
+      <Id>
+        <TypeId>MyObjectBuilder_AudioDefinition</TypeId>
+        <SubtypeId>WormholeJumpCharge</SubtypeId>
+      </Id>
+      <Category>SHIP</Category>
+      <Volume>4</Volume>
+      <MaxDistance>10000</MaxDistance>
+      <Waves>
+        <Wave Type="D3">
+          <Start>ARC\SHIP\ArcWormholeJumpDriveCharging3d01.wav</Start>
+        </Wave>
+      </Waves>
+    </Sound>
+    <Sound>
+      <Id>
+        <TypeId>MyObjectBuilder_AudioDefinition</TypeId>
+        <SubtypeId>WormholeJumpPerform</SubtypeId>
+      </Id>
+      <Category>SHIP</Category>
+      <Volume>4</Volume>
+      <MaxDistance>10000</MaxDistance>
+      <Waves>
+        <Wave Type="D3">
+          <Start>ARC\SHIP\ArcWormholeJumpOutbound3d01.wav</Start>
+        </Wave>
+      </Waves>
+    </Sound>
+    <Sound>
+      <Id>
+        <TypeId>MyObjectBuilder_AudioDefinition</TypeId>
+        <SubtypeId>WormholeJumpAfter</SubtypeId>
+      </Id>
+      <Category>SHIP</Category>
+      <Volume>4</Volume>
+      <MaxDistance>10000</MaxDistance>
+      <Waves>
+        <Wave Type="D3">
+          <Start>ARC\SHIP\ArcWormholeJumpInbound3d01.wav</Start>
+        </Wave>
+      </Waves>
+    </Sound>
+  </Sounds>
+</Definitions>
