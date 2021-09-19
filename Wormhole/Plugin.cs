@@ -224,7 +224,7 @@ namespace Wormhole
             }
             var grids = Utilities.FindGridList((MyCubeGrid)grid, Config.IncludeConnectedGrids);
 
-            if (grids == null || grids.Count == 0)
+            if (grids == null)
                 return;
 
             // mhm let's how dirty we can switch threads
@@ -311,6 +311,7 @@ namespace Wormhole
                             ModCommunication.SendMessageTo(new JoinServerMessage(destination[1] + ":" + destination[2]),
                                 playerSteamId);
                         }
+                        _clientEffectsManager.NotifyJumpStatusChanged(JumpStatus.Succeeded, gate, (MyCubeGrid)grid);
 
                         using (var stream =
                             File.Create(Utilities.CreateBlueprintPath(Path.Combine(Config.Folder, AdminGatesFolder),
@@ -502,6 +503,7 @@ namespace Wormhole
             }
 
             MyEntities.RemapObjectBuilderCollection(gridBlueprints);
+
             foreach (var gridBlueprint in gridBlueprints)
             {
                 var entity = MyEntities.CreateFromObjectBuilderNoinit(gridBlueprint);
