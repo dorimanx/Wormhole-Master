@@ -13,14 +13,14 @@ namespace Wormhole
             InitializeComponent();
         }
 
-        public Gui(WormholePlugin plugin) : this()
+        public Gui(Plugin plugin) : this()
         {
             Plugin = plugin;
             DataContext = plugin.Config;
             foreach (var wormhole in plugin.Config.WormholeGates.ToArray()) Listservers.Items.Add(wormhole);
         }
 
-        private WormholePlugin Plugin { get; }
+        private Plugin Plugin { get; }
 
         private void SaveButton_OnClick(object sender, RoutedEventArgs e)
         {
@@ -95,22 +95,12 @@ namespace Wormhole
 
         private void GithubLink(object sender, RoutedEventArgs e)
         {
-            Process.Start("https://github.com/AnthonyWalz/Wormhole-Master");
+            Process.Start("https://github.com/dorimanx/Wormhole-Master");
         }
 
         private void DiscordLink(object sender, RoutedEventArgs e)
         {
             Process.Start("https://discord.gg/zzxt2Zm");
-        }
-
-        private void PatreonLink(object sender, RoutedEventArgs e)
-        {
-            Process.Start("https://www.patreon.com/PrincessKennyCoding");
-        }
-
-        private void LordTylusGithubLink(object sender, RoutedEventArgs e)
-        {
-            Process.Start("https://github.com/LordTylus");
         }
     }
 }

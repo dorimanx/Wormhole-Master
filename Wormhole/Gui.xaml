@@ -25,16 +25,16 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="1*" />
             </Grid.RowDefinitions>
-            <TabControl x:Name="tabControl" HorizontalAlignment="Left">
+            <TabControl x:Name="TabControl" HorizontalAlignment="Left">
                 <TabItem>
                     <TabItem.Header>Global Settings</TabItem.Header>
-                    <StackPanel MinWidth="500" Width="{Binding ElementName=wideboi, Path=ActualWidth}" MaxWidth="1000">
+                    <StackPanel MinWidth="500" Width="{Binding ElementName=wideboi, Path=ActualWidth}" MaxWidth="1000" Height="369">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="300" />
-                                <ColumnDefinition Width="100" />
-                                <ColumnDefinition Width="100" />
-                                <ColumnDefinition Width="1*" />
+                                <ColumnDefinition Width="132" />
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition />
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -57,6 +57,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="80"/>
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Column="0" Grid.Row="1" VerticalAlignment="Center"
                                        Text="Server IP:Port (for reconnecting)" Margin="5,6" Height="16"
@@ -71,17 +72,11 @@
                             <TextBlock Grid.Column="0" Grid.Row="3" VerticalAlignment="Center"
                                        Text="Wormhole runs once out of x ticks" Margin="5,6" Height="16"
                                        Grid.ColumnSpan="2" />
-                            <TextBox Grid.Column="1" Grid.Row="3" Name="Tick" Margin="5" Text="{Binding Tick}"
-                                     Grid.ColumnSpan="2" />
+                            <TextBox Grid.Column="1" Grid.Row="3" Name="Tick" Margin="5,5,75,5" Text="{Binding Tick}" />
                             <TextBlock Grid.Column="0" Grid.Row="4" VerticalAlignment="Center"
                                        Text="Respawn Player in Seat" Margin="5,6" Height="16" Grid.ColumnSpan="2" />
                             <CheckBox Grid.Column="1" Grid.Row="4" Name="PlayerRespawn" Margin="5"
                                       IsChecked="{Binding PlayerRespawn}" />
-                            <!--
-                            <TextBlock   Grid.Column="0" Grid.Row ="5" VerticalAlignment="Center" Text="Respawn Type" Margin="5,6" Height="16" Grid.ColumnSpan="2"/>
-                            <RadioButton Grid.Column="1" Grid.Row ="5" GroupName="respawn" Margin="5" Name="RespawnTypeA" VerticalAlignment="Center" IsChecked="{Binding Path=PlayerRespawnType[0], Mode=TwoWay}">Aggressive</RadioButton>
-                            <RadioButton Grid.Column="2" Grid.Row ="5" GroupName="respawn" Margin="5" Name="RespawnTypeP" VerticalAlignment="Center" IsChecked="{Binding Path=PlayerRespawnType[1], Mode=TwoWay}">Passive</RadioButton>
-                            -->
                             <TextBlock Grid.Column="0" Grid.Row="6" VerticalAlignment="Center"
                                        Text="Save Server On Grid Exit (Warning May Cause Lag)" Margin="5,6" Height="16"
                                        Grid.ColumnSpan="2" />
@@ -95,10 +90,6 @@
 
                             <TextBlock   Grid.Column="0" Grid.Row ="8" VerticalAlignment="Center" Text="Grid Backup" Margin="5,6" Height="16" Grid.ColumnSpan="2"/>
                             <CheckBox    Grid.Column="1" Grid.Row ="8" Name="GridBackup" Margin="5" IsChecked="{Binding GridBackup}"/>
-                            <!--
-                            <TextBlock   Grid.Column="0" Grid.Row ="9" VerticalAlignment="Center" Text="Days To Save Backup Grids" Margin="5,6" Height="16" Grid.ColumnSpan="2"/>
-                            <TextBox     Grid.Column="1" Grid.Row ="9" Name="DaysToSaveGrids" Margin="5" Text="{Binding Folder}" Grid.ColumnSpan="2"/>
-                            -->
                             <TextBlock Grid.Column="0" Grid.Row="10" VerticalAlignment="Center"
                                        Text="Allow Faction Members" Margin="5,7" Height="16" />
                             <CheckBox Grid.Column="1" Grid.Row="10" Margin="5" IsChecked="{Binding AllowInFaction}"
@@ -113,78 +104,18 @@
                                       IsChecked="{Binding ExportProjectorBlueprints}" Name="ExportProjectorBlueprints" />
                             <TextBlock Grid.Column="0" Grid.Row="13" VerticalAlignment="Center"
                                        Text="SubtypeId of your jumpdrive" Margin="5,6" Height="16" />
-                            <TextBox Grid.Column="1" Grid.Row="13" Margin="5" Text="{Binding JumpDriveSubId}"
+                            <TextBox Grid.Column="1" Grid.Row="13" Margin="5,5,0,5" Text="{Binding JumpDriveSubId}"
                                      Name="JumpDriveSubid" Grid.ColumnSpan="2" />
                             <TextBlock Grid.Column="0" Grid.Row="14" VerticalAlignment="Center"
                                        Text="Work With All Jump Drives" Margin="5,6" Height="16" />
                             <CheckBox Grid.Column="1" Grid.Row="14" Margin="5" IsChecked="{Binding WorkWithAllJD}"
                                       Name="WorkWithAllJD" />
+                            <TextBlock Grid.Column="0" Grid.Row="20" VerticalAlignment="Center"
+                                Text="Use Effects Mod" Margin="5,8,5,52" Height="20" />
+                            <CheckBox Grid.Column="1" Grid.Row="20" Margin="5,10,5,52" IsChecked="{Binding GateVisuals}" Name="GateVisuals" />
                         </Grid>
                     </StackPanel>
                 </TabItem>
-                <!--
-                <TabItem>
-                    <TabItem.Header>Cross Cluster</TabItem.Header>
-                    <StackPanel MinWidth="500" Width="1000" MaxWidth="1000">
-                        <TextBlock>This is beta it has no incoming limit yet still it holds many fun possibilities</TextBlock>
-
-                    </StackPanel>
-                </TabItem>
-                <TabItem>
-                    <TabItem.Header>Weight Calculations</TabItem.Header>
-                    <StackPanel MinWidth="500" Width="1000" MaxWidth="1000">
-                        <TextBlock>ohhhh what is coming here i wonder...</TextBlock>
-
-                    </StackPanel>
-                </TabItem>
-                <TabItem>
-                    <TabItem.Header>Random Moving Gate</TabItem.Header>
-                    <StackPanel MinWidth="500" Width="1000" MaxWidth="1000">
-                        <TextBlock>Not Working Yet</TextBlock>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="auto"/>
-                                <ColumnDefinition Width="auto" MinWidth="200"/>
-                                <ColumnDefinition Width="1*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="12" VerticalAlignment="Center" Text="Random Moving Gates" FontWeight="Bold" Margin="5,6" />
-                            <TextBlock Grid.Column="0" Grid.Row ="13" VerticalAlignment="Center" Text="Random Moving Gate Radius" Margin="5,6" Height="16"/>
-                            <TextBox Name="RandomMovingGateRadius" Grid.Column="1" Grid.Row ="13" Margin="5" Text="{Binding RandomMovingGateRadius}"/>
-                            <TextBlock Grid.Column="0" Grid.Row ="14" VerticalAlignment="Center" Text="Random Moving Gate X,Y,Z Center" Margin="5,6" Height="16"/>
-                            <TextBox Name="RandomMovingGateXYZ" Grid.Column="1" Grid.Row ="14" Margin="5" Text="{Binding RandomMovingGateXYZ}"/>
-                            <TextBlock Grid.Column="0" Grid.Row ="15" VerticalAlignment="Center" Text="Random Moving Gate Hide Till Found" Margin="5,6" Height="16"/>
-                            <CheckBox Name="RandomMovingGateHideTillFound" Grid.Column="1" Grid.Row ="15" Margin="5" IsChecked="{Binding RandomMovingGateHideTillFound}"/>
-                            <TextBlock Grid.Column="0" Grid.Row ="16" VerticalAlignment="Center" Text="Random Moving Gate Discovery Radius" Margin="5,6" Height="16"/>
-                            <TextBox Name="RandomMovingGateDiscoveryRadius" Grid.Column="1" Grid.Row ="16" Margin="5" Text="{Binding RandomMovingGateDiscoveryRadius}"/>
-                            <TextBlock Grid.Column="0" Grid.Row ="17" VerticalAlignment="Center" Text="Random Moving Gate Move Ever X Hours" Margin="5,6" Height="16"/>
-                            <TextBox Name="RandomMovingGateMoveEverXHours" Grid.Column="1" Grid.Row ="17" Margin="5" Text="{Binding RandomMovingGateMoveEverXHours}"/>
-                            <StackPanel Grid.Row="0" Grid.Column="2" Grid.RowSpan="8">
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </TabItem>
-                -->
                 <TabItem>
                     <TabItem.Header>Admin Gates</TabItem.Header>
                     <StackPanel MinWidth="500" Width="1000" MaxWidth="1000">
@@ -343,23 +274,6 @@
                         </ListView>
                     </StackPanel>
                 </TabItem>
-                <!--
-                <TabItem Header="Player Gates" Visibility="Visible">
-                    <StackPanel MinWidth="500" Width="1000" MaxWidth="1000">
-                        <TextBlock>ohhhh what is coming here i wonder...</TextBlock>
-                    </StackPanel>
-                </TabItem>
-                <TabItem Header="Teleporting" Visibility="Visible">
-                    <StackPanel MinWidth="500" Width="1000" MaxWidth="1000">
-                        <TextBlock>ohhhh what is coming here i wonder...</TextBlock>
-                    </StackPanel>
-                </TabItem>
-                <TabItem Header="Data Syncing" Visibility="Visible">
-                    <StackPanel MinWidth="500" Width="1000" MaxWidth="1000">
-                        <TextBlock>ohhhh what is coming here i wonder...</TextBlock>
-                    </StackPanel>
-                </TabItem>
-                -->
             </TabControl>
         </Grid>
         <Grid Margin="0,30,0,0">
@@ -376,14 +290,8 @@
             </Grid.RowDefinitions>
             <TextBlock TextAlignment="Right" Grid.Row="0" Grid.Column="0" Margin="5" TextWrapping="Wrap">Need help? Check out the Discord.</TextBlock>
             <Button Grid.Row="0" Grid.Column="1" Click="DiscordLink" Margin="5">https://discord.gg/zzxt2Zm</Button>
-            <TextBlock TextAlignment="Right" Grid.Row="1" Grid.Column="0" Margin="5" TextWrapping="Wrap">Like what you see?</TextBlock>
-            <Button Grid.Row="1" Grid.Column="1" Margin="5" Click="PatreonLink">https://www.patreon.com/PrincessKennyCoding</Button>
             <TextBlock TextAlignment="Right" Grid.Row="2" Grid.Column="0" Margin="5" TextWrapping="Wrap">Checkout the Github for this project.</TextBlock>
-            <Button Grid.Row="2" Grid.Column="1" Margin="5" Click="GithubLink">https://github.com/AnthonyWalz/Wormhole-Master</Button>
-            <TextBlock TextAlignment="Right" Grid.Row="3" Grid.Column="0" Margin="5" TextWrapping="Wrap">A BIG thanks to LordTylus, the guy who makes the ALE plugins. Checkout his github. The guy does GREAT documentation so it's just the place to go if starting to learn to write plugins. I used some code from his ALE-Core.</TextBlock>
-            <Button Grid.Row="3" Grid.Column="1" Margin="5" Click="LordTylusGithubLink">https://github.com/LordTylus</Button>
-
-            <TextBlock TextAlignment="Right" Grid.Row="4" Grid.Column="0" Margin="5" TextWrapping="Wrap">I just want to Call out LTP and Zacharias for adding to the code thanks guys.</TextBlock>
+            <Button Grid.Row="2" Grid.Column="1" Margin="5" Click="GithubLink">https://github.com/dorimanx/Wormhole-Master</Button>
         </Grid>
         <Grid Visibility="Hidden">
             <Grid.ColumnDefinitions>

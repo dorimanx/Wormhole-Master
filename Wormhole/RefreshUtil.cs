@@ -11,7 +11,7 @@ using VRage.Replication;
 using VRageMath;
 using System.Linq;
 
-namespace Wormhole.Wormhole
+namespace Wormhole
 {
     public partial class RefreshUtil
     {

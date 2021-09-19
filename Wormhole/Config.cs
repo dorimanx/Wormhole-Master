@@ -10,11 +10,11 @@ namespace Wormhole
     {
         private bool _saveOnExit = false;
         private bool _saveOnEnter = false;
-        private bool _allowInFaction = false;
+        private bool _allowInFaction = true;
         private bool _includeConnectedGrids = true;
-        private bool _exportProjectorGrids = false;
+        private bool _exportProjectorGrids = true;
 
-        private string _jumpDriveSubId = "WormholeDrive";
+        private string _jumpDriveSubId = "WormholeDrive, WormholeDrive_Small";
         private string _thisIp = "";
 
         private double _GateRadius = 180;
@@ -23,9 +23,9 @@ namespace Wormhole
         private bool _playerRespawn = true;
         private bool _workWithAllJd = false;
         private bool _autoSend = false;
-        private bool[] _playerRespawnType = new bool[] { false, false };
         private bool _KeepOwnership = false;
-        private bool _gridBackup = false;
+        private bool _gridBackup = true;
+		private bool _GateVisuals = false;
 
         [XmlIgnore]
         public MtObservableList<WormholeGate> WormholeGates { get; } = new MtObservableList<WormholeGate>();
@@ -44,12 +44,6 @@ namespace Wormhole
                     WormholeGates.Add(Wormhole);
                 }
             }
-        }
-
-        public bool[] PlayerRespawnType
-        {
-            get => _playerRespawnType;
-            set => SetValue(ref _playerRespawnType, value);
         }
 
         [Display(Name = "Save Server On Grid Exit", Description = "Warning! May Cause Lag")]
@@ -151,6 +145,13 @@ namespace Wormhole
         {
             get => _gridBackup;
             set => SetValue(ref _gridBackup, value);
+        }
+		
+		[Display(Name = "Gate Visuals", Description = "Gate visual effects on jump")]
+		public bool GateVisuals
+        {
+            get => _GateVisuals;
+            set => SetValue(ref _GateVisuals, value);
         }
     }
 }

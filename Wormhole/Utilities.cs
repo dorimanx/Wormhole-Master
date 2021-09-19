@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using NLog;
 using Sandbox;
 using Sandbox.Common.ObjectBuilders;
@@ -14,7 +12,6 @@ using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Game.ObjectBuilders.Components;
 using VRage.Game.ObjectBuilders.ComponentSystem;
-using VRage.Groups;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -22,6 +19,182 @@ namespace Wormhole
 {
     internal class Utilities
     {
+        public static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
+        public static bool UpdateGridsPositionAndStop(ICollection<MyObjectBuilder_CubeGrid> grids, Vector3D newPosition)
+        {
+            var biggestGrid = grids.OrderByDescending(static b => b.CubeBlocks.Count).First();
+            newPosition -= FindGridsBoundingSphere(grids, biggestGrid).Center -
+                           biggestGrid.PositionAndOrientation!.Value.Position;
+            var delta = newPosition - biggestGrid.PositionAndOrientation!.Value.Position;
+
+            return grids.All(grid =>
+            {
+                if (grid.PositionAndOrientation == null)
+                {
+                    Log.Warn($"Position and Orientation Information missing from Grid {grid.DisplayName} in file.");
+                    return false;
+                }
+
+                var gridPositionOrientation = grid.PositionAndOrientation.Value;
+                gridPositionOrientation.Position = newPosition + delta;
+                grid.PositionAndOrientation = gridPositionOrientation;
+
+                // reset velocity
+                grid.AngularVelocity = new ();
+                grid.LinearVelocity = new ();
+                return true;
+            });
+        }
+
+        public static void UpdateGridPositionAndStopLive(IMyEntity grid, Vector3D newPosition)
+        {
+            var matrix = grid.PositionComp.WorldMatrixRef;
+            matrix.Translation = newPosition;
+            grid.Teleport(matrix);
+            grid.Physics.LinearVelocity = Vector3.Zero;
+            grid.Physics.AngularVelocity = Vector3.Zero;
+        }
+
+        public static string CreateBlueprintPath(string folder, string fileName)
+        {
+            Directory.CreateDirectory(folder);
+            return Path.Combine(folder, fileName + ".sbc");
+        }
+
+        public static bool HasRightToMove(IMyPlayer player, MyCubeGrid grid)
+        {
+            var result = player.GetRelationTo(GetOwner(grid)) == MyRelationsBetweenPlayerAndBlock.Owner;
+            if (Plugin.Instance.Config.AllowInFaction && !result)
+                result = player.GetRelationTo(GetOwner(grid)) == MyRelationsBetweenPlayerAndBlock.FactionShare;
+            return result;
+        }
+
+        public static long GetOwner(MyCubeGrid grid)
+        {
+            var gridOwnerList = grid.BigOwners;
+            var ownerCnt = gridOwnerList.Count;
+            var gridOwner = 0L;
+
+            if (ownerCnt > 0 && gridOwnerList[0] != 0)
+                return gridOwnerList[0];
+            if (ownerCnt > 1)
+                return gridOwnerList[1];
+
+            return gridOwner;
+        }
+
+        public static List<MyCubeGrid> FindGridList(MyCubeGrid grid, bool includeConnectedGrids)
+        {
+            var list = new List<MyCubeGrid>();
+
+            list.AddRange(includeConnectedGrids
+                ? MyCubeGridGroups.Static.Physical.GetGroup(grid).Nodes.Select(static b => b.NodeData)
+                : MyCubeGridGroups.Static.Mechanical.GetGroup(grid).Nodes.Select(static b => b.NodeData));
+
+            return list;
+        }
+
+        public static Vector3D? FindFreePos(BoundingSphereD gate, float sphereradius)
+        {
+            var rand = new Random();
+
+            MyEntity safezone = null;
+            var entities = MyEntities.GetEntitiesInSphere(ref gate);
+            foreach (var myentity in entities)
+            {
+                if (myentity is MySafeZone)
+                    safezone = myentity;
+            }
+
+            return MyEntities.FindFreePlaceCustom(
+                gate.RandomToUniformPointInSphere(rand.NextDouble(), rand.NextDouble(), rand.NextDouble()),
+                sphereradius, 20, 5, 1, 0, safezone);
+        }
+
+        public static string LegalCharOnly(string text)
+        {
+            return string.Join(string.Empty, text.Where(static b => char.IsLetter(b) || char.IsNumber(b)));
+        }
+
+        public static float FindGridsRadius(IEnumerable<MyObjectBuilder_CubeGrid> grids)
+        {
+            Vector3? vector = null;
+            var gridradius = 0f;
+
+            foreach (var mygrid in grids)
+            {
+                var gridSphere = mygrid.CalculateBoundingSphere();
+                if (vector == null)
+                {
+                    vector = gridSphere.Center;
+                    gridradius = gridSphere.Radius;
+                    continue;
+                }
+
+                var distance = Vector3.Distance(vector.Value, gridSphere.Center);
+                var newRadius = distance + gridSphere.Radius;
+                if (newRadius > gridradius)
+                    gridradius = newRadius;
+            }
+            return (float)new BoundingSphereD(vector.Value, gridradius).Radius;
+        }
+
+        public static BoundingSphereD FindGridsBoundingSphere(IEnumerable<MyObjectBuilder_CubeGrid> grids,
+            MyObjectBuilder_CubeGrid biggestGrid)
+        {
+            var boxD = BoundingBoxD.CreateInvalid();
+            boxD.Include(biggestGrid.CalculateBoundingBox());
+            var matrix = biggestGrid.PositionAndOrientation!.Value.GetMatrix();
+            var matrix2 = MatrixD.Invert(matrix);
+            var array = new Vector3D[8];
+            foreach (var grid in grids)
+            {
+                if (grid == biggestGrid) continue;
+
+                BoundingBoxD box = grid.CalculateBoundingBox();
+                var myOrientedBoundingBoxD =
+                    new MyOrientedBoundingBoxD(box, grid.PositionAndOrientation!.Value.GetMatrix());
+                myOrientedBoundingBoxD.Transform(matrix2);
+                myOrientedBoundingBoxD.GetCorners(array, 0);
+
+                foreach (var point in array)
+                {
+                    boxD.Include(point);
+                }
+            }
+
+            var boundingSphereD = BoundingSphereD.CreateFromBoundingBox(boxD);
+            return new (new MyOrientedBoundingBoxD(boxD, matrix).Center, boundingSphereD.Radius);
+        }
+
+        public static void KillCharacter(MyCharacter character)
+        {
+            Log.Info("killing character " + character.DisplayName);
+            if (character.IsUsing is MyCockpit cockpit)
+                cockpit.RemovePilot();
+            character.GetIdentity()?.ChangeCharacter(null);
+
+            character.EnableBag(false);
+            character.Close();
+        }
+
+        public static void KillCharacters(ICollection<long> characters)
+        {
+            foreach (var character in characters)
+            {
+                if (MyEntities.TryGetEntityById(character, out MyCharacter entity, allowClosed: false))
+                    KillCharacter(entity);
+            }
+            characters.Clear();
+        }
+
+        public static void RemovePilot(MyObjectBuilder_Cockpit cockpit)
+        {
+            cockpit.Pilot = null;
+            ((MyObjectBuilder_HierarchyComponentBase)(cockpit.ComponentContainer.Components.FirstOrDefault((MyObjectBuilder_ComponentContainer.ComponentData b) => b.Component is MyObjectBuilder_HierarchyComponentBase)?.Component))?.Children.Clear();
+        }
+
         public class TransferFileInfo
         {
             public string DestinationWormhole;
@@ -67,375 +240,6 @@ namespace Wormhole
             {
                 return $"{DestinationWormhole}_{SteamUserId}_{LegalCharOnly(PlayerName)}_{LegalCharOnly(GridName)}_{Time:yyyy_MM_dd_HH_mm_ss}";
             }
-        }
-        public static readonly Logger Log = LogManager.GetCurrentClassLogger();
-
-        public static bool UpdateGridsPositionAndStop(IEnumerable<MyObjectBuilder_CubeGrid> grids, Vector3D newPosition)
-        {
-            return grids.All(grid =>
-            {
-                if (!grid.PositionAndOrientation.HasValue)
-                {
-                    Log.Warn("Position and Orientation Information missing from Grid in file.");
-                    return false;
-                }
-
-                var gridPositionOrientation = grid.PositionAndOrientation.Value;
-                gridPositionOrientation.Position = newPosition;
-                grid.PositionAndOrientation = gridPositionOrientation;
-
-                // reset velocity
-                grid.AngularVelocity = default;
-                grid.LinearVelocity = default;
-                return true;
-            });
-        }
-
-        public static bool UpdateGridsPositionAndStopLive(IMyEntity grids, Vector3D newPosition)
-        {
-            grids.PositionComp.SetPosition(newPosition);
-            grids.Physics.LinearVelocity = new Vector3(0f, 0f, 0f);
-            grids.Physics.AngularVelocity = new Vector3(0f, 0f, 0f);
-            return true;
-        }
-
-        public static bool WormholeGateConfigUpdate()
-        {
-            var dir = new DirectoryInfo(WormholePlugin.Instance.Config.Folder);
-            foreach (var wormhole in WormholePlugin.Instance.Config.WormholeGates)
-            {
-                dir.CreateSubdirectory("./" + WormholePlugin.AdminGatesConfig + "/" + wormhole.Name);
-                var configDir = new DirectoryInfo(WormholePlugin.Instance.Config.Folder + "/" +
-                                                  WormholePlugin.AdminGatesConfig + "/" + wormhole.Name);
-                configDir.GetFiles().ForEach(b => b.Delete());
-                File.Create(WormholePlugin.Instance.Config.Folder + "/" + WormholePlugin.AdminGatesConfig +
-                            "/" + wormhole.Name + "/" + WormholePlugin.Instance.Config.ThisIp);
-            }
-
-            return true;
-        }
-
-        public static string CreateBlueprintPath(string folder, string fileName)
-        {
-            Directory.CreateDirectory(folder);
-            return Path.Combine(folder, fileName + ".sbc");
-        }
-
-        public static bool HasRightToMove(IMyPlayer player, MyCubeGrid grid)
-        {
-            var result = player.GetRelationTo(GetOwner(grid)) == MyRelationsBetweenPlayerAndBlock.Owner;
-            if (WormholePlugin.Instance.Config.AllowInFaction && !result)
-                result = player.GetRelationTo(GetOwner(grid)) == MyRelationsBetweenPlayerAndBlock.FactionShare;
-            return result;
-        }
-
-        public static long GetOwner(MyCubeGrid grid)
-        {
-            var gridOwnerList = grid.BigOwners;
-            var ownerCnt = gridOwnerList.Count;
-            var gridOwner = 0L;
-
-            if (ownerCnt > 0 && gridOwnerList[0] != 0)
-                return gridOwnerList[0];
-            if (ownerCnt > 1)
-                return gridOwnerList[1];
-
-            return gridOwner;
-        }
-
-        public static List<MyCubeGrid> FindGridList(string gridNameOrEntityId, MyCharacter character, bool includeConnectedGrids)
-        {
-            var grids = new List<MyCubeGrid>();
-
-            if (gridNameOrEntityId == null && character == null)
-                return new List<MyCubeGrid>();
-
-            if (includeConnectedGrids)
-            {
-                var groups = ((gridNameOrEntityId != null) ? FindGridGroup(gridNameOrEntityId) : FindLookAtGridGroup(character));
-
-                if (groups.Count > 1)
-                    return null;
-
-                foreach (var group in groups)
-                    foreach (var node in group.Nodes)
-                    {
-                        var grid = node.NodeData;
-
-                        if (grid.Physics == null)
-                            continue;
-
-                        grids.Add(grid);
-                    }
-            }
-            else
-            {
-                var groups = ((gridNameOrEntityId != null) ? FindGridGroupMechanical(gridNameOrEntityId) : FindLookAtGridGroupMechanical(character));
-
-                if (groups.Count > 1)
-                    return null;
-
-                foreach (var group in groups)
-                {
-                    foreach (var node in group.Nodes)
-                    {
-                        var grid = node.NodeData;
-
-                        if (grid.Physics == null)
-                            continue;
-
-                        grids.Add(grid);
-                    }
-                }
-            }
-
-            return grids;
-        }
-
-        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> FindGridGroupMechanical(string gridName)
-        {
-            var groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group>();
-            Parallel.ForEach(MyCubeGridGroups.Static.Mechanical.Groups, group =>
-            {
-                foreach (var groupNodes in group.Nodes)
-                {
-                    var grid = groupNodes.NodeData;
-
-                    if (grid.Physics == null)
-                        continue;
-
-                    /* Gridname is wrong ignore */
-                    if (!grid.DisplayName.Equals(gridName) && grid.EntityId + "" != gridName)
-                        continue;
-
-                    groups.Add(group);
-                }
-            });
-
-            return groups;
-        }
-
-        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> FindLookAtGridGroupMechanical(IMyCharacter controlledEntity)
-        {
-            const float range = 5000;
-            Matrix worldMatrix;
-            Vector3D startPosition;
-            Vector3D endPosition;
-
-            // dead center of player cross hairs, or the direction the player is looking with ALT.
-            worldMatrix = controlledEntity.GetHeadMatrix(true);
-
-            startPosition = worldMatrix.Translation + worldMatrix.Forward * 0.5f;
-            endPosition = worldMatrix.Translation + worldMatrix.Forward * (range + 0.5f);
-
-            var list = new Dictionary<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group, double>();
-            var ray = new RayD(startPosition, worldMatrix.Forward);
-
-            foreach (var group in MyCubeGridGroups.Static.Mechanical.Groups)
-            {
-                foreach (var groupNodes in group.Nodes)
-                {
-                    IMyCubeGrid cubeGrid = groupNodes.NodeData;
-                    if (cubeGrid != null)
-                    {
-                        if (cubeGrid.Physics == null)
-                            continue;
-
-                        // check if the ray comes anywhere near the Grid before continuing.    
-                        if (ray.Intersects(cubeGrid.WorldAABB).HasValue)
-                        {
-                            var hit = cubeGrid.RayCastBlocks(startPosition, endPosition);
-                            if (hit.HasValue)
-                            {
-                                var distance = (startPosition - cubeGrid.GridIntegerToWorld(hit.Value)).Length();
-
-                                if (list.TryGetValue(group, out var oldDistance))
-                                {
-                                    if (distance < oldDistance)
-                                    {
-                                        list.Remove(group);
-                                        list.Add(group, distance);
-                                    }
-                                }
-                                else
-                                    list.Add(group, distance);
-                            }
-                        }
-                    }
-                }
-            }
-
-            var bag = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group>();
-
-            if (list.Count == 0)
-                return bag;
-
-            // find the closest Entity.
-            var item = list.OrderBy(f => f.Value).First();
-            bag.Add(item.Key);
-
-            return bag;
-        }
-
-        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindGridGroup(string gridName)
-        {
-            var groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group>();
-            Parallel.ForEach(MyCubeGridGroups.Static.Physical.Groups, group =>
-            {
-                foreach (var groupNodes in group.Nodes)
-                {
-                    var grid = groupNodes.NodeData;
-
-                    if (grid.Physics == null)
-                        continue;
-
-                    /* Gridname is wrong ignore */
-                    if (!grid.DisplayName.Equals(gridName) && grid.EntityId + "" != gridName)
-                        continue;
-
-                    groups.Add(group);
-                }
-            });
-
-            return groups;
-        }
-
-        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindLookAtGridGroup(IMyCharacter controlledEntity)
-        {
-            const float range = 5000;
-            Matrix worldMatrix;
-            Vector3D startPosition;
-            Vector3D endPosition;
-
-            // dead center of player cross hairs, or the direction the player is looking with ALT.
-            worldMatrix = controlledEntity.GetHeadMatrix(true);
-
-            startPosition = worldMatrix.Translation + worldMatrix.Forward * 0.5f;
-            endPosition = worldMatrix.Translation + worldMatrix.Forward * (range + 0.5f);
-
-            var list = new Dictionary<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group, double>();
-            var ray = new RayD(startPosition, worldMatrix.Forward);
-
-            foreach (var group in MyCubeGridGroups.Static.Physical.Groups)
-            {
-                foreach (var groupNodes in group.Nodes)
-                {
-                    IMyCubeGrid cubeGrid = groupNodes.NodeData;
-
-                    if (cubeGrid == null || cubeGrid.Physics == null)
-                        continue;
-
-                    // check if the ray comes anywhere near the Grid before continuing.    
-                    if (!ray.Intersects(cubeGrid.WorldAABB).HasValue)
-                        continue;
-
-                    var hit = cubeGrid.RayCastBlocks(startPosition, endPosition);
-                    if (!hit.HasValue)
-                        continue;
-
-                    var distance = (startPosition - cubeGrid.GridIntegerToWorld(hit.Value)).Length();
-
-                    if (list.TryGetValue(group, out var oldDistance))
-                    {
-                        if (distance < oldDistance)
-                        {
-                            list.Remove(group);
-                            list.Add(group, distance);
-                        }
-                    }
-                    else
-                        list.Add(group, distance);
-                }
-            }
-
-            var bag = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group>();
-
-            if (list.Count == 0)
-                return bag;
-
-            // find the closest Entity.
-            var item = list.OrderBy(f => f.Value).First();
-            bag.Add(item.Key);
-
-            return bag;
-        }
-
-        public static Vector3D? FindFreePos(BoundingSphereD gate, float sphereradius)
-        {
-            var rand = new Random();
-            MyEntity safezone = null;
-            var entities = MyEntities.GetEntitiesInSphere(ref gate);
-
-            foreach (var myentity in entities)
-            {
-                if (myentity is MySafeZone)
-                    safezone = myentity;
-            }
-
-            return MyEntities.FindFreePlaceCustom(
-                gate.RandomToUniformPointInSphere(rand.NextDouble(), rand.NextDouble(), rand.NextDouble()),
-                sphereradius, 20, 5, 1, 0, safezone);
-        }
-
-        public static string LegalCharOnly(string text)
-        {
-            var legallist = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
-            var temp = "";
-            foreach (var character in text)
-            {
-                if (legallist.IndexOf(character) != -1)
-                    temp += character;
-            }
-
-            return temp;
-        }
-
-        public static float FindGridsRadius(IEnumerable<MyObjectBuilder_CubeGrid> grids)
-        {
-            Vector3? vector = null;
-            var gridradius = 0f;
-
-            foreach (var mygrid in grids)
-            {
-                var gridSphere = mygrid.CalculateBoundingSphere();
-                if (!vector.HasValue)
-                {
-                    vector = gridSphere.Center;
-                    gridradius = gridSphere.Radius;
-                    continue;
-                }
-
-                var distance = Vector3.Distance(vector.Value, gridSphere.Center);
-                var newRadius = distance + gridSphere.Radius;
-                if (newRadius > gridradius)
-                    gridradius = newRadius;
-            }
-            return (float)new BoundingSphereD(vector.Value, gridradius).Radius;
-        }
-
-        public static void KillCharacter(MyCharacter character)
-        {
-            Log.Info("killing character " + character.DisplayName);
-            (character.IsUsing as MyCockpit)?.RemovePilot();
-            character.GetIdentity()?.ChangeCharacter(null);
-            character.EnableBag(enabled: false);
-            character.Close();
-        }
-
-        public static void KillCharacters(ICollection<long> characters)
-        {
-            foreach (long character in characters)
-            {
-                if (MyEntities.TryGetEntityById(character, out MyCharacter entity, allowClosed: false))
-                    KillCharacter(entity);
-            }
-            characters.Clear();
-        }
-
-        public static void RemovePilot(MyObjectBuilder_Cockpit cockpit)
-        {
-            cockpit.Pilot = null;
-            ((MyObjectBuilder_HierarchyComponentBase)(cockpit.ComponentContainer.Components.FirstOrDefault((MyObjectBuilder_ComponentContainer.ComponentData b) => b.Component is MyObjectBuilder_HierarchyComponentBase)?.Component))?.Children.Clear();
         }
     }
 }

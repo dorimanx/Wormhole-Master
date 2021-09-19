@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Sandbox.Common.ObjectBuilders;
@@ -17,9 +18,9 @@ using VRageMath;
 namespace Wormhole
 {
     [Category("wormhole")]
-    public class WormholeCommands : CommandModule
+    public class Commands : CommandModule
     {
-        public WormholePlugin Plugin => (WormholePlugin)Context.Plugin;
+        public Plugin Plugin => (Plugin) Context.Plugin;
 
         [Command("show", "shows wormholes")]
         [Permission(MyPromoteLevel.None)]
@@ -27,63 +28,42 @@ namespace Wormhole
         {
             foreach (var wormholeGate in Plugin.Config.WormholeGates)
             {
-                var description = wormholeGate.Description;
-                var color = "#ff00f7";
-                description = ((description != null) ? wormholeGate.Description.Replace("\\n", "\n") : "");
-                if (wormholeGate.HexColor != null && wormholeGate.HexColor != "")
-                    color = wormholeGate.HexColor;
-                try
-                {
-                    MyVisualScriptLogicProvider.AddGPS(wormholeGate.Name, description,
-                        new Vector3D(wormholeGate.X, wormholeGate.Y, wormholeGate.Z), ColorUtils.TranslateColor(color), 0,
-                        Context.Player.IdentityId);
-                    Context.Respond("GPS added to your list if it didn't already exist");
-                }
-                catch
-                {
-                    Context.Respond(
-                        "Error: tell an admin to check the Hexcolor setting make sure it has # at the begining");
-                }
+                var gps = wormholeGate.ToGps();
+                MySession.Static.Gpss.SendAddGps(Context.Player.IdentityId, ref gps);
             }
+
+            Context.Respond("GPSs added to your list if it didn't already exist");
         }
 
-        [Command("showeveryone", "shows wormholes")]
+        [Command("showeveryone", "shows wormholes to everyone (offline players too)")]
         [Permission(MyPromoteLevel.Admin)]
         public void ShowEveryoneWormholes()
         {
             foreach (var wormholeGate in Plugin.Config.WormholeGates)
             {
-                var description = wormholeGate.Description;
-                var color = "#ff00f7";
-                description = ((description != null) ? wormholeGate.Description.Replace("\\n", "\n") : "");
-                if (wormholeGate.HexColor != null && wormholeGate.HexColor != "")
-                    color = wormholeGate.HexColor;
-                try
+                var gps = wormholeGate.ToGps();
+                foreach (var (_, identityId) in Sync.Players
+                    .GetPrivateField<ConcurrentDictionary<MyPlayer.PlayerId, long>>("m_playerIdentityIds"))
                 {
-                    MyVisualScriptLogicProvider.AddGPSForAll(wormholeGate.Name, description,
-                        new Vector3D(wormholeGate.X, wormholeGate.Y, wormholeGate.Z), ColorUtils.TranslateColor(color));
-                    Context.Respond("GPS added to everyone's list if it didn't already exist");
-                }
-                catch
-                {
-                    Context.Respond(
-                        "Error: tell an admin to check the Hexcolor setting make sure it has # at the begining");
+                    MySession.Static.Gpss.SendAddGps(identityId, ref gps);
                 }
             }
+
+            Context.Respond("GPSs added to everyone's list if it didn't already exist");
         }
 
         [Command("safezone", "adds safe zones")]
         [Permission(MyPromoteLevel.Admin)]
-        public void Safezone(float radius = -1)
+        public void SafeZone(float radius = -1)
         {
-            if (radius == -1) radius = (float)Plugin.Config.GateRadius;
+            if (radius < 1) radius = (float) Plugin.Config.GateRadius;
             var entities = MyEntities.GetEntities();
             if (entities != null)
             {
-                foreach (var entity in entities)
+                foreach (var entity in entities.Where(static entity =>
+                    entity is MySafeZone && entity.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-SafeZone]")))
                 {
-                    if (entity != null && entity is MySafeZone && entity.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-SafeZone]"))
-                        entity.Close();
+                    entity.Close();
                 }
             }
             foreach (var server in Plugin.Config.WormholeGates)
@@ -91,7 +71,7 @@ namespace Wormhole
                 var ob = new MyObjectBuilder_SafeZone
                 {
                     PositionAndOrientation =
-                        new MyPositionAndOrientation(new Vector3D(server.X, server.Y, server.Z), Vector3.Forward, Vector3.Up),
+                        new MyPositionAndOrientation(new (server.X, server.Y, server.Z), Vector3.Forward, Vector3.Up),
                     PersistentFlags = MyPersistentEntityFlags2.InScene,
                     Shape = MySafeZoneShape.Sphere,
                     Radius = radius,
@@ -117,23 +97,28 @@ namespace Wormhole
             try
             {
                 var entities = MyEntities.GetEntities();
-                if (entities != null)
-                    entities.Where(b => b != null)
+                if (entities is { })
+                {
+                    foreach (var grid in entities
                         .OfType<MyCubeGrid>()
-                        .Where(b => b.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-Gate]"))
-                        .ForEach(b => b.Close());
+                        .Where(static b => b.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-Gate]")))
+                    {
+                        grid.Close();
+                    }
+                }
 
                 foreach (var server in Plugin.Config.WormholeGates)
                 {
-                    string prefab = type switch
+                    var prefab = type switch
                     {
                         2 => "WORMHOLE_ROTATING",
                         3 => "WORMHOLE_ROTATING_ADVANCED",
                         4 => "WORMHOLE_53_BLOCKS",
                         5 => "WORMHOLE_ROTATING_53_BLOCKS",
                         6 => "WORMHOLE_ROTATING_ADVANCED_53_BLOCKS",
-                        _ => "WORMHOLE",
+                        _ => "WORMHOLE"
                     };
+
                     var grids = MyPrefabManager.Static.GetGridPrefab(prefab);
                     var objectBuilderList = new List<MyObjectBuilder_EntityBase>();
 
@@ -209,11 +194,11 @@ namespace Wormhole
             MyVisualScriptLogicProvider.CreateLightning(Context.Player.GetPosition());
         }
 
-        [Command("Clearsync", "try to remove all files in sync folder")]
+        [Command("clearsync", "try to remove all files in sync folder")]
         [Permission(MyPromoteLevel.Admin)]
-        public void Clearsync()
+        public void ClearSync()
         {
-            var gridDir = new DirectoryInfo(Plugin.Config.Folder + "/" + WormholePlugin.AdminGatesFolder);
+            var gridDir = new DirectoryInfo(Plugin.Config.Folder + "/" + Plugin.AdminGatesFolder);
 
             if (!gridDir.Exists) return;
 
@@ -236,10 +221,11 @@ namespace Wormhole
         {
             if (Context.Player == null)
                 return;
-            var identity = (MyIdentity)Context.Player.Identity;
 
+            var identity = (MyIdentity) Context.Player.Identity;
             Utilities.KillCharacters(identity.SavedCharacters);
-            Sync.Players.KillPlayer((MyPlayer)Context.Player);
+
+            Sync.Players.KillPlayer((MyPlayer) Context.Player);
         }
     }
 }
