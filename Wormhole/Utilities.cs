@@ -26,25 +26,55 @@ namespace Wormhole
             var biggestGrid = grids.OrderByDescending(static b => b.CubeBlocks.Count).First();
             newPosition -= FindGridsBoundingSphere(grids, biggestGrid).Center -
                            biggestGrid.PositionAndOrientation!.Value.Position;
-            var delta = newPosition - biggestGrid.PositionAndOrientation!.Value.Position;
+            var MainGridOrgPos = biggestGrid.PositionAndOrientation.GetValueOrDefault().Position + Vector3D.Zero;
+            var GridIndex = 0;
 
-            return grids.All(grid =>
+            foreach (var gridBlueprint in grids)
             {
-                if (grid.PositionAndOrientation == null)
+                if (gridBlueprint.PositionAndOrientation == null)
                 {
-                    Log.Warn($"Position and Orientation Information missing from Grid {grid.DisplayName} in file.");
+                    Log.Warn($"Position and Orientation Information missing from Grid {gridBlueprint.DisplayName} in file.");
                     return false;
                 }
 
-                var gridPositionOrientation = grid.PositionAndOrientation.Value;
-                gridPositionOrientation.Position = newPosition + delta;
-                grid.PositionAndOrientation = gridPositionOrientation;
+                foreach (var block in gridBlueprint.CubeBlocks)
+                {
+                    if (block is MyObjectBuilder_OxygenTank o2Tank)
+                    {
+                        if (o2Tank.AutoRefill)
+                            o2Tank.AutoRefill = false;
+                    }
+                    if (block is MyObjectBuilder_Projector MyProjector)
+                    {
+                        if (MyProjector.Enabled)
+                            MyProjector.Enabled = false;
+                    }
+                }
 
-                // reset velocity
-                grid.AngularVelocity = new ();
-                grid.LinearVelocity = new ();
-                return true;
-            });
+                if (GridIndex == 0)
+                {
+                    GridIndex++;
+
+                    var MainGridPos = gridBlueprint.PositionAndOrientation.GetValueOrDefault();
+                    MainGridPos.Position = newPosition;
+                    gridBlueprint.PositionAndOrientation = MainGridPos;
+
+                    // reset velocity
+                    gridBlueprint.AngularVelocity = new();
+                    gridBlueprint.LinearVelocity = new();
+                }
+                else
+                {
+                    var OtherGridsPos = gridBlueprint.PositionAndOrientation.GetValueOrDefault();
+                    OtherGridsPos.Position = newPosition + OtherGridsPos.Position - MainGridOrgPos;
+                    gridBlueprint.PositionAndOrientation = OtherGridsPos;
+
+                    // reset velocity
+                    gridBlueprint.AngularVelocity = new();
+                    gridBlueprint.LinearVelocity = new();
+                }
+            }
+            return true;
         }
 
         public static void UpdateGridPositionAndStopLive(IMyEntity grid, Vector3D newPosition)
@@ -165,7 +195,7 @@ namespace Wormhole
             }
 
             var boundingSphereD = BoundingSphereD.CreateFromBoundingBox(boxD);
-            return new (new MyOrientedBoundingBoxD(boxD, matrix).Center, boundingSphereD.Radius);
+            return new(new MyOrientedBoundingBoxD(boxD, matrix).Center, boundingSphereD.Radius);
         }
 
         public static void KillCharacter(MyCharacter character)
