@@ -420,7 +420,7 @@ namespace Wormhole
             }
         }
 
-        [Command("stopeffect", "Show gate Effect on gate by gate name, need to have grid with jumpdrive near gate in 500m")]
+        [Command("stopeffect", "Stop gate Effect on gate by gate name, need to have grid with jumpdrive near gate in 500m")]
         [Permission(MyPromoteLevel.Admin)]
         public void StopEffectonGate(string Name = "error")
         {
@@ -482,13 +482,6 @@ namespace Wormhole
             {
                 Context.Respond("Error: make sure you add the mod for the gates you are using");
             }
-        }
-
-        [Command("thorshammer", "Summon the power of Mjölnir")]
-        [Permission(MyPromoteLevel.Admin)]
-        public void ThorsHammer()
-        {
-            MyVisualScriptLogicProvider.CreateLightning(Context.Player.GetPosition());
         }
 
         [Command("clearsync", "try to remove all files in sync folder")]

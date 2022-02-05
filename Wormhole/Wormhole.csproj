@@ -176,7 +176,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="WindowsBase" />
-    <PackageReference Include="PropertyChanged.Fody" Version="3.3.3.0" PrivateAssets="All" />
+    <PackageReference Include="PropertyChanged.Fody" Version="3.4.0" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HelpCommand.cs" />

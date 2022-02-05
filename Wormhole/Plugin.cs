@@ -265,9 +265,9 @@ namespace Wormhole
 
             _clientEffectsManager.NotifyJumpStatusChanged(JumpStatus.Perform, gateViewModel, grid, freePos);
 
-            MyVisualScriptLogicProvider.CreateLightning(gateViewModel.Position);
+            //MyVisualScriptLogicProvider.CreateLightning(gateViewModel.Position);
             Utilities.UpdateGridPositionAndStopLive(wormholeDrive.CubeGrid, freePos.Value);
-            MyVisualScriptLogicProvider.CreateLightning(pos);
+            //MyVisualScriptLogicProvider.CreateLightning(pos);
         }
 
         private void ProcessGateJump(GateDestinationViewModel dest, MyCubeGrid grid, IReadOnlyCollection<MyCubeGrid> grids,
@@ -287,9 +287,9 @@ namespace Wormhole
 
                 _clientEffectsManager.NotifyJumpStatusChanged(JumpStatus.Perform, gateViewModel, grid, freePos);
 
-                MyVisualScriptLogicProvider.CreateLightning(gateViewModel.Position);
+                //MyVisualScriptLogicProvider.CreateLightning(gateViewModel.Position);
                 Utilities.UpdateGridPositionAndStopLive(wormholeDrive.CubeGrid, freePos.Value);
-                MyVisualScriptLogicProvider.CreateLightning(toGatePoint);
+                //MyVisualScriptLogicProvider.CreateLightning(toGatePoint);
             }
             else
             {
@@ -306,7 +306,7 @@ namespace Wormhole
 
                 _clientEffectsManager.NotifyJumpStatusChanged(JumpStatus.Perform, gateViewModel, grid);
 
-                MyVisualScriptLogicProvider.CreateLightning(gateViewModel.Position);
+                //MyVisualScriptLogicProvider.CreateLightning(gateViewModel.Position);
 
                 var JumpTo = dest.Name;
                 var PlayerName = playerInCharge.DisplayName;
@@ -558,7 +558,7 @@ namespace Wormhole
                 OnGridSpawned(entity, savedCharacters);
             }
 
-            MyVisualScriptLogicProvider.CreateLightning(gatePosition);
+            //MyVisualScriptLogicProvider.CreateLightning(gatePosition);
 
             var PlayerName = fileTransferInfo.PlayerName;
             Log.Warn($"Player {PlayerName} used wormhole to jump to this server.");
