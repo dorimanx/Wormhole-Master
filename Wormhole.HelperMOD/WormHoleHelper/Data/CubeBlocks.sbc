@@ -6,7 +6,7 @@
         <TypeId>JumpDrive</TypeId>
         <SubtypeId>WormholeDrive</SubtypeId>
       </Id>
-      <DisplayName>Large Wormhole Jump Drive</DisplayName>
+      <DisplayName>DisplayName_Block_WormholeDrive</DisplayName>
       <Icon>Textures\Icons\SouperJumpDrive.dds</Icon>
       <Description>Stabilizes Wormhole to allow safe travel.</Description>
       <CubeSize>Large</CubeSize>
@@ -18,11 +18,12 @@
         <Component Subtype="SteelPlate" Count="150" />
         <Component Subtype="GravityGenerator" Count="20" />
         <Component Subtype="Detector" Count="20" />
-        <Component Subtype="PowerCell" Count="120" />
+        <Component Subtype="LithiumPowerCell" Count="120" />
         <Component Subtype="Superconductor" Count="1000" />
         <Component Subtype="Computer" Count="300" />
-        <Component Subtype="MetalGrid" Count="50" />
-        <Component Subtype="SteelPlate" Count="20" />
+        <Component Subtype="Reinforced_Mesh" Count="50" />
+        <Component Subtype="BareBrassWire" Count="60" />
+        <Component Subtype="ReinforcedPlate" Count="20" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
       <MountPoints>
@@ -59,7 +60,7 @@
         <TypeId>JumpDrive</TypeId>
         <SubtypeId>WormholeDrive_Small</SubtypeId>
       </Id>
-      <DisplayName>Small Wormhole Jump Drive</DisplayName>
+      <DisplayName>DisplayName_Block_WormholeDrive_Small</DisplayName>
       <Icon>Textures\Icons\SouperJumpDrive.dds</Icon>
       <Description>Stabilizes Wormhole to allow safe travel.</Description>
       <CubeSize>Small</CubeSize>
@@ -71,11 +72,12 @@
         <Component Subtype="SteelPlate" Count="50" />
         <Component Subtype="GravityGenerator" Count="5" />
         <Component Subtype="Detector" Count="20" />
-        <Component Subtype="PowerCell" Count="50" />
+        <Component Subtype="LithiumPowerCell" Count="50" />
         <Component Subtype="Superconductor" Count="500" />
         <Component Subtype="Computer" Count="150" />
-        <Component Subtype="MetalGrid" Count="20" />
-        <Component Subtype="SteelPlate" Count="10" />
+        <Component Subtype="BareBrassWire" Count="20" />
+        <Component Subtype="Reinforced_Mesh" Count="20" />
+        <Component Subtype="ReinforcedPlate" Count="10" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
       <MountPoints>
