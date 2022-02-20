@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Game;
@@ -102,7 +103,7 @@ namespace Wormhole
                     }
                 }
 
-                foreach (var server in Plugin.Config.WormholeGates)
+                foreach (var gateViewModel in Plugin.Config.WormholeGates)
                 {
                     var prefab = type switch
                     {
@@ -114,26 +115,23 @@ namespace Wormhole
                         _ => "WORMHOLE"
                     };
 
-                    var grids = MyPrefabManager.Static.GetGridPrefab(prefab);
-                    var objectBuilderList = new List<MyObjectBuilder_EntityBase>();
+                    var grids = MyPrefabManager.Static.GetGridPrefab(prefab).ToList();
 
-                    foreach (var grid in grids)
+                    foreach (var cubeBlock in grids.SelectMany(static grid => grid.CubeBlocks))
                     {
-                        foreach (var cubeBlock in grid.CubeBlocks)
+                        if (selfowned)
                         {
-                            if (selfowned)
-                            {
-                                cubeBlock.Owner = Context.Player.IdentityId;
-                                cubeBlock.BuiltBy = Context.Player.IdentityId;
-                            }
-                            else
-                            {
-                                cubeBlock.Owner = ownerid;
-                                cubeBlock.BuiltBy = ownerid;
-                            }
+                            cubeBlock.Owner = Context.Player.IdentityId;
+                            cubeBlock.BuiltBy = Context.Player.IdentityId;
                         }
-                        objectBuilderList.Add(grid);
+                        else
+                        {
+                            cubeBlock.Owner = ownerid;
+                            cubeBlock.BuiltBy = ownerid;
+                        }
                     }
+
+                    MyEntities.RemapObjectBuilderCollection(grids);
 
                     var firstGrid = true;
                     double deltaX = 0;
@@ -148,13 +146,13 @@ namespace Wormhole
 
                         if (firstGrid)
                         {
-                            deltaX = server.X - currentPosition.X;
-                            deltaY = server.Y - currentPosition.Y;
-                            deltaZ = server.Z - currentPosition.Z;
+                            deltaX = gateViewModel.X - currentPosition.X;
+                            deltaY = gateViewModel.Y - currentPosition.Y;
+                            deltaZ = gateViewModel.Z - currentPosition.Z;
 
-                            currentPosition.X = server.X;
-                            currentPosition.Y = server.Y;
-                            currentPosition.Z = server.Z;
+                            currentPosition.X = gateViewModel.X;
+                            currentPosition.Y = gateViewModel.Y;
+                            currentPosition.Z = gateViewModel.Z;
 
                             firstGrid = false;
 
@@ -174,11 +172,15 @@ namespace Wormhole
 
                         realPosition.Position = currentPosition;
                         grid.PositionAndOrientation = realPosition;
-                    }
+                        grid.Immune = true;
+                        grid.Editable = false;
 
-                    MyEntities.RemapObjectBuilderCollection(objectBuilderList);
-                    MyEntities.Load(objectBuilderList, out _);
+                        // Queue work for creation thread, so no lags on main
+                        MyEntities.CreateAsync(grid, true);
+                    }
                 }
+
+                Thread.Sleep(100);
 
                 var entitiesRescan = MyEntities.GetEntities();
                 if (entitiesRescan is { })
