@@ -148,7 +148,7 @@ namespace Wormhole
 
         #endregion
 
-        public void TestEffectStart (GateViewModel gateViewModel, MyPlayer playerInCharge, MyCubeGrid Grid)
+        public void TestEffectStart(GateViewModel gateViewModel, MyPlayer playerInCharge, MyCubeGrid Grid)
         {
             Task.Run(async () =>
             {
@@ -210,41 +210,47 @@ namespace Wormhole
 
             Task.Run(async () =>
             {
-                var jumpTask = _jumpManager.StartJump(gateViewModel, playerInCharge, wormholeDrive.CubeGrid);
-
-                if (pickedDestination is GateDestinationViewModel destination &&
-                    !_discoveryManager.IsLocalGate(destination.Name) &&
-                    _discoveryManager.GetGateByName(destination.Name, out var address) is { })
+                try
                 {
-                    var result = (await Task.WhenAll(jumpTask, _serverQueryManager.IsServerFull(address))).Aggregate(static (a, b) => a && b);
+                    var jumpTask = _jumpManager.StartJump(gateViewModel, playerInCharge, wormholeDrive.CubeGrid);
 
-                    if (result)
+                    if (pickedDestination is GateDestinationViewModel destination &&
+                        !_discoveryManager.IsLocalGate(destination.Name) &&
+                        _discoveryManager.GetGateByName(destination.Name, out var address) is { })
                     {
-                        MyVisualScriptLogicProvider.SendChatMessage("Destination server is FULL!", "Wormhole",
-                            playerInCharge.Identity.IdentityId, MyFontEnum.Red);
+                        var result = (await Task.WhenAll(jumpTask, _serverQueryManager.IsServerFull(address))).Aggregate(static (a, b) => a && b);
 
-                        MyVisualScriptLogicProvider.ShowNotification("Destination server is FULL!", 15000,
-                            MyFontEnum.Red, playerInCharge.Identity.IdentityId);
-                        return;
+                        if (result)
+                        {
+                            MyVisualScriptLogicProvider.SendChatMessage("Destination server is FULL!", "Wormhole",
+                                playerInCharge.Identity.IdentityId, MyFontEnum.Red);
+
+                            MyVisualScriptLogicProvider.ShowNotification("Destination server is FULL!", 15000,
+                                MyFontEnum.Red, playerInCharge.Identity.IdentityId);
+                            return;
+                        }
                     }
+                    else
+                        await jumpTask;
+
+                    await Torch.InvokeAsync(() =>
+                    {
+                        // This is here because it can be thread unsafe, so just call it in game thread
+                        wormholeDrive.CurrentStoredPower = 0;
+
+                        if (pickedDestination is GateDestinationViewModel gateDestination)
+                            ProcessGateJump(gateDestination, grid, grids, wormholeDrive, gateViewModel, playerInCharge);
+                        else if (pickedDestination is InternalDestinationViewModel internalDestination)
+                            ProcessInternalGpsJump(internalDestination, grid, grids, wormholeDrive, gateViewModel);
+                    });
+
+                    _clientEffectsManager.NotifyJumpStatusChanged(JumpStatus.Succeeded, gateViewModel, grid);
                 }
-                else
-                    await jumpTask;
-
-                await _jumpManager.Jump(gateViewModel, grid);
-
-                await Torch.InvokeAsync(() =>
+                catch (Exception e)
                 {
-                    // This is here because it can be thread unsafe, so just call it in game thread
-                    wormholeDrive.CurrentStoredPower = 0;
-
-                    if (pickedDestination is GateDestinationViewModel gateDestination)
-                        ProcessGateJump(gateDestination, grid, grids, wormholeDrive, gateViewModel, playerInCharge);
-                    else if (pickedDestination is InternalDestinationViewModel internalDestination)
-                        ProcessInternalGpsJump(internalDestination, grid, grids, wormholeDrive, gateViewModel);
-                });
-
-                _clientEffectsManager.NotifyJumpStatusChanged(JumpStatus.Succeeded, gateViewModel, grid);
+                    Log.Fatal(e);
+                    throw;
+                }
             });
         }
 

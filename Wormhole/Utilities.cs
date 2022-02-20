@@ -21,7 +21,7 @@ using VRageMath;
 
 namespace Wormhole
 {
-    internal class Utilities
+    public class Utilities
     {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         private static readonly Random RandomPos = new Random();

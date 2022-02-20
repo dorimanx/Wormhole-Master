@@ -21,15 +21,10 @@ namespace Wormhole.Managers
         {
             MyVisualScriptLogicProvider.ShowNotification("Opening the gate...", (int)TimeSpan.FromSeconds(4).TotalMilliseconds, playerId: player.Identity.IdentityId);
             _effectsManager.NotifyJumpStatusChanged(JumpStatus.Started, gateViewModel, grid);
-            await Task.Delay(TimeSpan.FromSeconds(12));
+            await Task.Delay(TimeSpan.FromSeconds(10));
+            _effectsManager.NotifyJumpStatusChanged(JumpStatus.Ready, gateViewModel, grid);
 
             return true;
-        }
-
-        public async Task Jump(GateViewModel gateViewModel, MyCubeGrid grid)
-        {
-            _effectsManager.NotifyJumpStatusChanged(JumpStatus.Ready, gateViewModel, grid);
-            await Task.Delay(TimeSpan.FromSeconds(3));
         }
     }
 }
