@@ -9,11 +9,9 @@ namespace Wormhole.Mod
     [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
     public class GateVisuals : MySessionComponentBase
     {
-        // The visual effects for the gates were designed by Klime who did a fantastic job.
-
         public static GateVisuals Instance;
-        private readonly Dictionary<uint, RotatingParticle> _allEffects = new Dictionary<uint, RotatingParticle>();
-        private readonly Dictionary<uint, RotatingParticle> _enabledEffects = new Dictionary<uint, RotatingParticle>();
+        private readonly Dictionary<uint, WarpParticle> _allEffects = new Dictionary<uint, WarpParticle>();
+        private readonly Dictionary<uint, WarpParticle> _enabledEffects = new Dictionary<uint, WarpParticle>();
 
         public GateVisuals()
         {
@@ -23,33 +21,21 @@ namespace Wormhole.Mod
         public bool CreateEffectForGate(GateDataMessage gate, bool enable = false)
         {
             var effectName = gate.ParticleId;
-            var size = gate.Size;
+            var centerMatrix = MatrixD.CreateWorld(gate.Position, gate.Forward, - Vector3D.Up);
 
-            var centerMatrix = MatrixD.CreateWorld(gate.Position, Vector3D.CalculatePerpendicularVector(gate.Forward), - gate.Forward);
+            var warpParticle = new WarpParticle(centerMatrix, gate.ParticleId);
 
-            if (effectName.Contains("end"))
-            {
-                size *= 0.4f;
-                centerMatrix = MatrixD.CreateWorld(gate.Position, Vector3D.CalculatePerpendicularVector(gate.Forward), gate.Forward);
-            }
+            _allEffects[gate.Id] = warpParticle;
 
-            var initialMatrix = centerMatrix;
-            initialMatrix.Translation += initialMatrix.Right * size;
-            var wmPos = initialMatrix.Translation;
-            var rotatingParticle = new RotatingParticle(0, initialMatrix, centerMatrix, size, gate.ParticleId);
-
-            _allEffects[gate.Id] = rotatingParticle;
             if (enable)
-            {
-                _enabledEffects[gate.Id] = rotatingParticle;
-                return true;
-            }
+                _enabledEffects[gate.Id] = warpParticle;
+
             return true;
         }
 
         public void EnableEffectForGate(uint gateId)
         {
-            RotatingParticle effect;
+            WarpParticle effect;
             if (!_allEffects.TryGetValue(gateId, out effect))
                 return;
 
@@ -59,7 +45,7 @@ namespace Wormhole.Mod
 
         public void DisableEffectForGate(uint gateId)
         {
-            RotatingParticle effect;
+            WarpParticle effect;
             if (!_enabledEffects.TryGetValue(gateId, out effect))
                 return;
 
@@ -79,37 +65,6 @@ namespace Wormhole.Mod
             _enabledEffects.Clear();
         }
 
-
-        public override void Draw()
-        {
-            if (MyAPIGateway.Multiplayer.IsServer)
-                return;
-
-            foreach (var effect in _enabledEffects)
-            {
-                var rotatingParticle = effect.Value;
-
-                if (rotatingParticle.Effect == null)
-                {
-                    rotatingParticle.Play();
-                    continue;
-                }
-
-                //Rotate the particle emitter every tick
-                var angle = Vector3D.Rotate(rotatingParticle.InitialMatrix.Translation - rotatingParticle.CenterMatrix.Translation,
-                                            MatrixD.CreateFromAxisAngle(rotatingParticle.CenterMatrix.Up, rotatingParticle.CurrentAngle));
-
-                var finalPos = rotatingParticle.CenterMatrix.Translation + Vector3D.Normalize(angle) * rotatingParticle.Radius;
-                var finalUp = Vector3D.Normalize(rotatingParticle.CenterMatrix.Translation - finalPos);
-
-                //Final matrix
-                rotatingParticle.Effect.WorldMatrix = MatrixD.CreateWorld(finalPos, finalUp, rotatingParticle.Effect.WorldMatrix.Up);
-
-                //Increase the angle every tick
-                rotatingParticle.CurrentAngle += 0.5f;
-            }
-        }
-
         protected override void UnloadData()
         {
             if (MyAPIGateway.Multiplayer.IsServer)
@@ -118,21 +73,15 @@ namespace Wormhole.Mod
             RemoveAllEffect();
         }
 
-        public class RotatingParticle
+        public class WarpParticle
         {
-            public MatrixD CenterMatrix; //Center position to orbit around
-            public float CurrentAngle;
             public MyParticleEffect Effect;
-            public MatrixD InitialMatrix; //Initial position
-            public float Radius;
+            public MatrixD InitialMatrix; //Central position
             private readonly string _effectName;
 
-            public RotatingParticle(float currentAngle, MatrixD initialMatrix, MatrixD centerMatrix, float radius, string effectName)
+            public WarpParticle(MatrixD initialMatrix, string effectName)
             {
-                CurrentAngle = currentAngle;
                 InitialMatrix = initialMatrix;
-                CenterMatrix = centerMatrix;
-                Radius = radius;
                 _effectName = effectName;
             }
 
@@ -140,6 +89,9 @@ namespace Wormhole.Mod
             {
                 var pos = InitialMatrix.Translation;
                 MyParticlesManager.TryCreateParticleEffect(_effectName, ref InitialMatrix, ref pos, uint.MaxValue, out Effect);
+
+                if (Effect != null)
+                    Effect.UserScale = 8;
             }
 
             public void Stop()
