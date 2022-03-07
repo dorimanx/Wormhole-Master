@@ -5,10 +5,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:wormhole="clr-namespace:Wormhole"
              xmlns:torch="clr-namespace:Torch.Views;assembly=Torch"
+             xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
              mc:Ignorable="d" d:DesignHeight="600" d:DesignWidth="800">
     <UserControl.DataContext>
         <wormhole:Config />
     </UserControl.DataContext>
+    <UserControl.Resources>
+        
+    </UserControl.Resources>
     <StackPanel>
         <Grid>
             <Grid.ColumnDefinitions>
@@ -30,7 +34,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="1*" />
             </Grid.RowDefinitions>
-            <TabControl x:Name="TabControl" HorizontalAlignment="Left">
+            <TabControl x:Name="TabControl" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                 <TabItem>
                     <TabItem.Header>Global Settings</TabItem.Header>
                     <torch:PropertyGrid Margin="3" />
@@ -101,9 +105,9 @@
                             <TextBlock Grid.Column="0" Grid.Row="1" HorizontalAlignment="Center" Text="Gate Name"
                                        FontWeight="Bold" Margin="48,5,42,5" Width="69" />
                             <TextBlock Grid.Column="1" Grid.Row="1" HorizontalAlignment="Center" Text="Description"
-                                       FontWeight="Bold" Margin="38,5,56,5" />
-                            <TextBlock Grid.Column="2" Grid.Row="1" HorizontalAlignment="Center" Text="HexColor"
-                                       FontWeight="Bold" Margin="0,5,17,5" Width="63" />
+                                       FontWeight="Bold" Margin="5" />
+                            <TextBlock Grid.Column="2" Grid.Row="1" HorizontalAlignment="Center" Text="Color"
+                                       FontWeight="Bold" Margin="5" />
                             <TextBlock Grid.Column="3" Grid.Row="1" HorizontalAlignment="Center"
                                        Text="Destinations" FontWeight="Bold" Margin="5" />
                             <TextBlock Grid.Column="4" Grid.Row="1" HorizontalAlignment="Center" Text="X"
@@ -114,13 +118,12 @@
                                        FontWeight="Bold" Margin="5" />
                             <TextBox x:Name="Nameinput" Grid.Column="0" Grid.Row="2" Margin="0,5,10,10"
                                      TextWrapping="Wrap" />
-                            <TextBox x:Name="Descriptioninput" Grid.Row="2" Margin="154,5,10,10"
-                                     TextWrapping="Wrap" Grid.ColumnSpan="2" />
-                            <TextBox x:Name="HexColorinput" Grid.Column="1" Grid.Row="2" Margin="155,5,10,10"
-                                     TextWrapping="Wrap" Grid.ColumnSpan="2" />
-                            <Button x:Name="DestinationsButton" Grid.Column="3" Grid.Row="2" Margin="0,5,10,10"
-                                    Content="Edit" Click="DestinationsButton_OnClick"/>
-                            <TextBox x:Name="Xinput" Grid.Column="4" Grid.Row="2" Margin="5,5,5,10"
+                            <TextBox x:Name="Descriptioninput" Grid.Column="1" Grid.Row="2" Margin="5" Height="30"
+                                     TextWrapping="Wrap" />
+                            <xctk:ColorPicker Grid.Column="2" Grid.Row="2" x:Name="GateColorPicker" Margin="5" Height="30" IsEnabled="False" />
+                            <Button x:Name="DestinationsButton" Grid.Column="3" Grid.Row="2" Margin="5" Height="30"
+                                    Content="Edit" Click="DestinationsButton_OnClick" IsEnabled="False"/>
+                            <TextBox x:Name="Xinput" Grid.Column="4" Grid.Row="2" Margin="5" Height="30"
                                      TextWrapping="Wrap" />
                             <TextBox x:Name="Yinput" Grid.Column="5" Grid.Row="2" Margin="5,5,5,10"
                                      TextWrapping="Wrap" />
