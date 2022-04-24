@@ -175,8 +175,8 @@ namespace Wormhole
                         grid.Immune = true;
                         grid.Editable = false;
 
-                        // Queue work for creation thread, so no lags on main
-                        MyEntities.CreateAsync(grid, true);
+                        // spawn not like a clown. or its fail.
+                        MyAPIGateway.Entities.CreateFromObjectBuilderParallel(grid, true);
                     }
                 }
 
