@@ -116,6 +116,7 @@ namespace Wormhole
                     };
 
                     var grids = MyPrefabManager.Static.GetGridPrefab(prefab).ToList();
+                    var objectBuilderList = new List<MyObjectBuilder_EntityBase>();
 
                     foreach (var cubeBlock in grids.SelectMany(static grid => grid.CubeBlocks))
                     {
@@ -130,8 +131,6 @@ namespace Wormhole
                             cubeBlock.BuiltBy = ownerid;
                         }
                     }
-
-                    MyEntities.RemapObjectBuilderCollection(grids);
 
                     var firstGrid = true;
                     double deltaX = 0;
@@ -175,12 +174,13 @@ namespace Wormhole
                         grid.Immune = true;
                         grid.Editable = false;
 
-                        // spawn not like a clown. or its fail.
-                        MyAPIGateway.Entities.CreateFromObjectBuilderParallel(grid, true);
+                        objectBuilderList.Add(grid);
                     }
-                }
 
-                Thread.Sleep(100);
+                    // spawn not like a clown. or its fail.
+                    MyEntities.RemapObjectBuilderCollection(objectBuilderList);
+                    MyEntities.Load(objectBuilderList, out _);
+                }
 
                 var entitiesRescan = MyEntities.GetEntities();
                 if (entitiesRescan is { })
