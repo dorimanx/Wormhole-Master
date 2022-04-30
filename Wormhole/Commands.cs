@@ -160,7 +160,6 @@ namespace Wormhole
                                 grid.IsStatic = true;
                                 grid.IsUnsupportedStation = true;
                             }
-
                         }
                         else
                         {
