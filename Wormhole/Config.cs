@@ -62,7 +62,7 @@ namespace Wormhole
         [Display(Name = "Max Arrival Distance From Gate", Description = "Maximum spawn distance (metters) from gate when arriving from other server, must be more then MIN!, Server to Server Only.")]
         public int MaxDistance { get; set; } = 5;
 
-        [Display(Name = "Check Is Target Server Full", Description = "Check if target server is full on jump")]
-        public bool CheckIsTargetServerFull { get; set; } = true;
+        [Display(Name = "On Jump, Check if target server is full", Description = "On Jump, Check if target server is full.")]
+        public bool CheckIfTargetServerFull { get; set; } = true;
     }
 }
