@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -37,7 +37,7 @@ namespace Wormhole
             foreach (var wormholeGate in Plugin.Config.WormholeGates)
             {
                 var gps = wormholeGate.ToGps();
-                MyAPIGateway.Session?.GPS.AddGps(Context.Player.IdentityId, gps);
+                MySession.Static.Gpss.SendAddGpsRequest(Context.Player.IdentityId, ref gps);
             }
             Context.Respond("GPSs added to your list if it didn't already exist");
         }
@@ -50,7 +50,9 @@ namespace Wormhole
             {
                 var gps = wormholeGate.ToGps();
                 foreach (var (_, identityId) in Sync.Players.GetPrivateField<ConcurrentDictionary<MyPlayer.PlayerId, long>>("m_playerIdentityIds"))
-                    MyAPIGateway.Session?.GPS.AddGps(identityId, gps);
+                {
+                    MySession.Static.Gpss.AddPlayerGps(identityId, ref gps);
+                }
             }
             Context.Respond("GPSs added to everyone's list if it didn't already exist");
         }

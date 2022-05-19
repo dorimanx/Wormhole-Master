@@ -37,7 +37,9 @@ namespace Wormhole.Managers
 
         public DestinationViewModel TryGetDestination(MyTerminalBlock block, GateViewModel gate)
         {
-            return TryGetDestinationFromStorage(block.Storage, out var destinationId) ? gate.Destinations.SingleOrDefault(b => b.Id == destinationId) : null;
+            return TryGetDestinationFromStorage(block.Storage, out var destinationId)
+                ? gate.Destinations.SingleOrDefault(b => b.Id == destinationId)
+                : null;
         }
 
         private static bool TryGetDestinationFromStorage(MyModStorageComponentBase component, out string destination)

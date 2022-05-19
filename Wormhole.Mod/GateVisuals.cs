@@ -21,7 +21,7 @@ namespace Wormhole.Mod
         public bool CreateEffectForGate(GateDataMessage gate, bool enable = false)
         {
             var effectName = gate.ParticleId;
-            var centerMatrix = MatrixD.CreateWorld(gate.Position, gate.Forward, - Vector3D.Up);
+            var centerMatrix = MatrixD.CreateWorld(gate.Position, gate.Forward, -Vector3D.Up);
 
             var warpParticle = new WarpParticle(centerMatrix, gate.ParticleId);
 

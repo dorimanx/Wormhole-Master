@@ -30,8 +30,10 @@ namespace Wormhole.Views.Converters
     {
         public static string Description(this Enum e)
         {
-            return (e.GetType().GetField(e.ToString())
-                .GetCustomAttributes(typeof(DescriptionAttribute), false).FirstOrDefault() as DescriptionAttribute)?.Description ?? e.ToString();
+            return (e.GetType()
+                .GetField(e.ToString())
+                .GetCustomAttributes(typeof(DescriptionAttribute), false)
+                .FirstOrDefault() as DescriptionAttribute)?.Description ?? e.ToString();
         }
     }
 

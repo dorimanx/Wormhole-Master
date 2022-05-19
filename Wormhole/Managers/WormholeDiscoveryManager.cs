@@ -61,7 +61,9 @@ namespace Wormhole.Managers
 
             _directoryPath = Path.Combine(Plugin.Instance.Config.Folder, "admingates_discovery");
             foreach (var file in Directory.CreateDirectory(_directoryPath).GetFiles("*.xml"))
+            {
                 ProcessItem(file.Name, file.FullName);
+            }
 
             _watcher.Path = _directoryPath;
             _watcher.Renamed += WatcherOnRenamed;
@@ -100,7 +102,8 @@ namespace Wormhole.Managers
 
             file = Path.Combine(_directoryPath, $"{thisIp}_{hash}");
 
-            using (var fileStream = File.Create(file)) fileStream.Write(buffer, 0, buffer.Length);
+            using (var fileStream = File.Create(file))
+                fileStream.Write(buffer, 0, buffer.Length);
 
             WinIoUtils.Rename(file, Path.Combine(_directoryPath, $"{thisIp}_{hash}.xml"));
         }

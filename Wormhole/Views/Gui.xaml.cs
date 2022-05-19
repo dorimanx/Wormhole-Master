@@ -59,7 +59,7 @@ namespace Wormhole.Views
             Yinput.Text = string.Empty;
             Zinput.Text = string.Empty;
             SendToHinput.Text = string.Empty;
-            _selectedGate = new ();
+            _selectedGate = new();
             DestinationsButton.IsEnabled = false;
         }
 
@@ -78,7 +78,7 @@ namespace Wormhole.Views
             Descriptioninput.Text = gate.Description;
             try
             {
-                GateColorPicker.SelectedColor = (Color) ColorConverter.ConvertFromString(gate.HexColor)!;
+                GateColorPicker.SelectedColor = (Color)ColorConverter.ConvertFromString(gate.HexColor)!;
             }
             catch (FormatException)
             {

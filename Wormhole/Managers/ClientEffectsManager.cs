@@ -64,7 +64,8 @@ namespace Wormhole.Managers
                 var sphere = new BoundingSphereD(wormholeGate.Position, config.GateRadius);
                 entities.Clear();
                 MyGamePruningStructure.GetAllEntitiesInSphere(ref sphere, entities);
-                var gate = entities.OfType<MyCubeGrid>().FirstOrDefault(static b => b.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-Gate]"));
+                var gate = entities.OfType<MyCubeGrid>()
+                    .FirstOrDefault(static b => b.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-Gate]"));
                 GateDataMessage visual;
 
                 var destinations = wormholeGate.Destinations.Select(static b => new DestinationData
@@ -127,7 +128,9 @@ namespace Wormhole.Managers
             else
             {
                 Plugin.Log.Info($"Gates request from {sender}");
-                MyAPIGateway.Multiplayer.SendMessageTo(GateDataNetId, MyAPIGateway.Utilities.SerializeToBinary(_message), sender);
+                MyAPIGateway.Multiplayer.SendMessageTo(GateDataNetId,
+                    MyAPIGateway.Utilities.SerializeToBinary(_message),
+                    sender);
             }
         }
     }
