@@ -183,17 +183,24 @@
     <PackageReference Include="PropertyChanged.Fody" Version="3.4.0" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ColorConverterExtensions.cs" />
     <Compile Include="HelpCommand.cs" />
     <Compile Include="Managers\ClientEffectsManager.cs" />
     <Compile Include="Managers\DestinationManager.cs" />
+    <Compile Include="Managers\Events\GridTransferEvent.cs" />
     <Compile Include="Managers\GateDataMessage.cs" />
     <Compile Include="Managers\GatesMessage.cs" />
     <Compile Include="Managers\JumpManager.cs" />
     <Compile Include="Managers\JumpStatus.cs" />
     <Compile Include="Managers\JumpStatusMessage.cs" />
     <Compile Include="Managers\ServerQueryManager.cs" />
+    <Compile Include="Managers\SpawnManager.cs" />
+    <Compile Include="Managers\TransferManager.cs" />
+    <Compile Include="Managers\WhitelistManager.cs" />
     <Compile Include="Managers\WormholeDiscoveryManager.cs" />
+    <Compile Include="Patches\RequestRespawnPatch.cs" />
     <Compile Include="TransferFile.cs" />
+    <Compile Include="TransferFileInfo.cs" />
     <Compile Include="Utilities.cs" />
     <Compile Include="Commands.cs" />
     <Compile Include="Config.cs" />
