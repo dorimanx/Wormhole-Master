@@ -38,7 +38,8 @@ namespace Wormhole.Managers
             Torch.GameStateChanged -= TorchOnGameStateChanged;
         }
 
-        public void NotifyJumpStatusChanged(JumpStatus status, GateViewModel gateViewModel, MyCubeGrid grid, Vector3D? destination = null)
+        public void NotifyJumpStatusChanged(JumpStatus status, GateViewModel gateViewModel, MyCubeGrid grid,
+            Vector3D? destination = null)
         {
             var message = new JumpStatusMessage
             {
@@ -47,13 +48,14 @@ namespace Wormhole.Managers
                 GridId = grid.EntityId,
                 Destination = destination ?? default
             };
-            MyAPIGateway.Multiplayer.SendMessageToOthers(JumpStatusNetId, MyAPIGateway.Utilities.SerializeToBinary(message));
+
+            MyAPIGateway.Multiplayer.SendMessageToOthers(JumpStatusNetId,
+                MyAPIGateway.Utilities.SerializeToBinary(message));
         }
 
         public void RecalculateVisualData()
         {
-            if (Torch.GameState != TorchGameState.Loaded)
-                return;
+            if (Torch.GameState != TorchGameState.Loaded) return;
 
             _message.Messages.Clear();
             var config = Plugin.Instance.Config;
@@ -106,14 +108,13 @@ namespace Wormhole.Managers
             _message.WormholeDriveIds.AddRange(_destinationManager.JdDefinitions.Select(b => (SerializableDefinitionId)b));
             _message.WorkWithAllJds = Plugin.Instance.Config.WorkWithAllJd;
 
-            MyAPIGateway.Multiplayer.SendMessageToOthers(GateDataNetId, MyAPIGateway.Utilities.SerializeToBinary(_message));
+            MyAPIGateway.Multiplayer.SendMessageToOthers(GateDataNetId,
+                MyAPIGateway.Utilities.SerializeToBinary(_message));
         }
 
         private void TorchOnGameStateChanged(MySandboxGame game, TorchGameState newState)
         {
-            if (newState != TorchGameState.Loaded)
-                return;
-
+            if (newState != TorchGameState.Loaded) return;
             MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(GateDataNetId, GateDataHandler);
             RecalculateVisualData();
         }
@@ -124,7 +125,9 @@ namespace Wormhole.Managers
                 return;
 
             if (data.Length != 1 || fromServer)
+            {
                 Plugin.Log.Warn($"Invalid gates request from {sender}");
+            }
             else
             {
                 Plugin.Log.Info($"Gates request from {sender}");

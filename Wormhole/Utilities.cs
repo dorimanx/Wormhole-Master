@@ -137,8 +137,9 @@ namespace Wormhole
                     safezone = myentity;
             }
 
-            return MyEntities.FindFreePlaceCustom(gate.RandomToUniformPointInSphere(rand.NextDouble(), rand.NextDouble(), rand.NextDouble()),
-                                                  sphereradius, 20, 5, 1, 0, safezone);
+            return MyEntities.FindFreePlaceCustom(
+                gate.RandomToUniformPointInSphere(rand.NextDouble(), rand.NextDouble(), rand.NextDouble()),
+                sphereradius, 20, 5, 1, 0, safezone);
         }
 
         public static string LegalCharOnly(string text)
@@ -169,7 +170,8 @@ namespace Wormhole
             return (float)new BoundingSphereD(vector.Value, gridradius).Radius;
         }
 
-        public static BoundingSphereD FindGridsBoundingSphere(IEnumerable<MyObjectBuilder_CubeGrid> grids, MyObjectBuilder_CubeGrid biggestGrid)
+        public static BoundingSphereD FindGridsBoundingSphere(IEnumerable<MyObjectBuilder_CubeGrid> grids,
+            MyObjectBuilder_CubeGrid biggestGrid)
         {
             var boxD = BoundingBoxD.CreateInvalid();
             boxD.Include(biggestGrid.CalculateBoundingBox());
@@ -182,7 +184,8 @@ namespace Wormhole
                 if (grid == biggestGrid) continue;
 
                 BoundingBoxD box = grid.CalculateBoundingBox();
-                var myOrientedBoundingBoxD = new MyOrientedBoundingBoxD(box, grid.PositionAndOrientation!.Value.GetMatrix());
+                var myOrientedBoundingBoxD =
+                    new MyOrientedBoundingBoxD(box, grid.PositionAndOrientation!.Value.GetMatrix());
                 myOrientedBoundingBoxD.Transform(matrix2);
                 myOrientedBoundingBoxD.GetCorners(array, 0);
 
@@ -223,7 +226,8 @@ namespace Wormhole
         {
             // wasted 15 hours to find this fucking HierarchyComponent trap
             cockpit.Pilot = null;
-            var component = cockpit.ComponentContainer?.Components?.FirstOrDefault(static b => b.Component is MyObjectBuilder_HierarchyComponentBase);
+            var component = cockpit.ComponentContainer?.Components?.FirstOrDefault(static b =>
+                b.Component is MyObjectBuilder_HierarchyComponentBase);
 
             ((MyObjectBuilder_HierarchyComponentBase)component?.Component)?.Children.Clear();
         }
@@ -251,7 +255,9 @@ namespace Wormhole
 
         public static void SendConnectToServer(string address, ulong clientId)
         {
-            ModCommunication.SendMessageTo(new JoinServerMessage(ToIpEndpoint(address, MySandboxGame.ConfigDedicated.ServerPort).ToString()), clientId);
+            ModCommunication.SendMessageTo(
+                new JoinServerMessage(ToIpEndpoint(address, MySandboxGame.ConfigDedicated.ServerPort).ToString()),
+                clientId);
         }
 
         public static IPEndPoint ToIpEndpoint(string hostNameOrAddress, int defaultPort)
@@ -262,7 +268,9 @@ namespace Wormhole
                 defaultPort = int.Parse(parts[1]);
 
             var addrs = Dns.GetHostAddresses(parts[0]);
-            return new(addrs.FirstOrDefault(addr => addr.AddressFamily == AddressFamily.InterNetwork) ?? addrs.First(), defaultPort);
+            return new(addrs.FirstOrDefault(addr => addr.AddressFamily == AddressFamily.InterNetwork)
+                        ??
+                        addrs.First(), defaultPort);
         }
 
         public static Vector3D RandomPositionFromGatePoint(Vector3D GatePoint, double distance)

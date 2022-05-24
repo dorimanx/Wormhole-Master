@@ -13,7 +13,10 @@ namespace Wormhole.Views.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return Enum.GetValues(value.GetType()).Cast<Enum>().Select(e => new ValueDescription { Value = e, Description = e.Description() }).ToList();
+            return Enum.GetValues(value.GetType())
+                .Cast<Enum>()
+                .Select(e => new ValueDescription { Value = e, Description = e.Description() })
+                .ToList();
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

@@ -241,7 +241,9 @@ namespace Wormhole
                         }
                     }
                     else
+                    {
                         await jumpTask;
+                    }
 
                     await Torch.InvokeAsync(() =>
                     {
@@ -273,11 +275,15 @@ namespace Wormhole
         private void ProcessInternalGpsJump(InternalDestinationViewModel dest, MyCubeGrid grid, ICollection<MyCubeGrid> grids,
             MyJumpDrive wormholeDrive, GateViewModel gateViewModel, MyPlayer playerInCharge)
         {
-            var pos = dest.TryParsePosition() ?? throw new InvalidOperationException($"Invalid gps position {dest.Gps}");
-            var box = grids.Select(static b => b.PositionComp.WorldAABB).Aggregate(static (a, b) => a.Include(b));
+            var pos = dest.TryParsePosition() ??
+                      throw new InvalidOperationException($"Invalid gps position {dest.Gps}");
+
+            var box = grids.Select(static b => b.PositionComp.WorldAABB)
+                .Aggregate(static (a, b) => a.Include(b));
             var toGate = new BoundingSphereD(pos, Config.GateRadius);
 
-            var freePos = Utilities.FindFreePos(toGate, (float)BoundingSphereD.CreateFromBoundingBox(box).Radius);
+            var freePos = Utilities.FindFreePos(toGate,
+                (float)BoundingSphereD.CreateFromBoundingBox(box).Radius);
 
             if (freePos is null)
                 return;
@@ -314,10 +320,13 @@ namespace Wormhole
 
             if (_discoveryManager.IsLocalGate(dest.Name))
             {
-                var box = grids.Select(static b => b.PositionComp.WorldAABB).Aggregate(static (a, b) => a.Include(b));
+                var box = grids.Select(static b => b.PositionComp.WorldAABB)
+                    .Aggregate(static (a, b) => a.Include(b));
                 var toGatePoint = destGate.Position;
                 var toGate = new BoundingSphereD(toGatePoint, Config.GateRadius);
-                var freePos = Utilities.FindFreePos(toGate, (float)BoundingSphereD.CreateFromBoundingBox(box).Radius);
+
+                var freePos = Utilities.FindFreePos(toGate,
+                    (float)BoundingSphereD.CreateFromBoundingBox(box).Radius);
 
                 if (freePos is null)
                 {
@@ -435,7 +444,9 @@ namespace Wormhole
                     Utilities.SendConnectToServer(ownerIp, playerSteamId);
                 }
 
-                using (var stream = File.Create(Utilities.CreateBlueprintPath(Path.Combine(Config.Folder, AdminGatesFolder), filename)))
+                using (var stream =
+                    File.Create(Utilities.CreateBlueprintPath(Path.Combine(Config.Folder, AdminGatesFolder),
+                        filename)))
                 using (var compressStream = new GZipStream(stream, CompressionMode.Compress))
                     Serializer.Serialize(compressStream, new TransferFile
                     {
@@ -479,7 +490,8 @@ namespace Wormhole
             var changes = false;
 
             // if file not null if file exists if file is done being sent and if file hasnt been received before
-            foreach (var file in Directory.EnumerateFiles(_gridDir, "*.sbcB5").Where(s => Path.GetFileNameWithoutExtension(s).Split('_')[0] == wormholeName))
+            foreach (var file in Directory.EnumerateFiles(_gridDir, "*.sbcB5")
+                    .Where(s => Path.GetFileNameWithoutExtension(s).Split('_')[0] == wormholeName))
             {
                 var fileName = Path.GetFileName(file);
                 if (!File.Exists(file)) continue;

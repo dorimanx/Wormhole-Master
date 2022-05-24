@@ -55,7 +55,8 @@ namespace Wormhole
             foreach (var wormholeGate in Plugin.Config.WormholeGates)
             {
                 var gps = wormholeGate.ToGps();
-                foreach (var (_, identityId) in Sync.Players.GetPrivateField<ConcurrentDictionary<MyPlayer.PlayerId, long>>("m_playerIdentityIds"))
+                foreach (var (_, identityId) in Sync.Players
+                    .GetPrivateField<ConcurrentDictionary<MyPlayer.PlayerId, long>>("m_playerIdentityIds"))
                 {
                     MySession.Static.Gpss.AddPlayerGps(identityId, ref gps);
                 }
@@ -71,15 +72,19 @@ namespace Wormhole
             var entities = MyEntities.GetEntities();
             if (entities != null)
             {
-                foreach (var entity in entities.Where(static entity => entity is MySafeZone && entity.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-SafeZone]")))
+                foreach (var entity in entities.Where(static entity =>
+                    entity is MySafeZone && entity.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-SafeZone]")))
+                {
                     entity.Close();
+                }
             }
 
             foreach (var server in Plugin.Config.WormholeGates)
             {
                 var ob = new MyObjectBuilder_SafeZone
                 {
-                    PositionAndOrientation = new MyPositionAndOrientation(new(server.X, server.Y, server.Z), Vector3.Forward, Vector3.Up),
+                    PositionAndOrientation =
+                        new MyPositionAndOrientation(new(server.X, server.Y, server.Z), Vector3.Forward, Vector3.Up),
                     PersistentFlags = MyPersistentEntityFlags2.InScene,
                     Shape = MySafeZoneShape.Sphere,
                     Radius = radius,
@@ -93,10 +98,12 @@ namespace Wormhole
                 MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
             }
 
-            Context.Respond("Deleted all entities with '[NPC-IGNORE]_[Wormhole-SafeZone]' in them and readded Safezones to each Wormhole");
+            Context.Respond(
+                "Deleted all entities with '[NPC-IGNORE]_[Wormhole-SafeZone]' in them and readded Safezones to each Wormhole");
         }
 
-        [Command("addgates", "Adds gates to each wormhole (type: 1 = regular, 2 = rotating, 3 = advanced rotating, 4 = regular 53blocks, 5 = rotating 53blocks, 6 = advanced rotating 53blocks) (selfowned: true = owned by you) (ownerid = id of who you want it owned by)")]
+        [Command("addgates",
+            "Adds gates to each wormhole (type: 1 = regular, 2 = rotating, 3 = advanced rotating, 4 = regular 53blocks, 5 = rotating 53blocks, 6 = advanced rotating 53blocks) (selfowned: true = owned by you) (ownerid = id of who you want it owned by)")]
         [Permission(MyPromoteLevel.Admin)]
         public void AddGates(int type = 1, bool selfowned = false, long ownerid = 0L, bool setstatic = false)
         {
@@ -105,7 +112,9 @@ namespace Wormhole
                 var entities = MyEntities.GetEntities();
                 if (entities is { })
                 {
-                    foreach (var grid in entities.OfType<MyCubeGrid>().Where(static b => b.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-Gate]")))
+                    foreach (var grid in entities
+                        .OfType<MyCubeGrid>()
+                        .Where(static b => b.DisplayName.Contains("[NPC-IGNORE]_[Wormhole-Gate]")))
                     {
                         grid.Close();
                     }
@@ -210,7 +219,8 @@ namespace Wormhole
                     }
                 }
 
-                Context.Respond("Deleted all entities with '[NPC-IGNORE]_[Wormhole-Gate]' in them and readded Gates to each Wormhole");
+                Context.Respond(
+                    "Deleted all entities with '[NPC-IGNORE]_[Wormhole-Gate]' in them and readded Gates to each Wormhole");
             }
             catch
             {

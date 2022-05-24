@@ -47,7 +47,9 @@ namespace Wormhole
 
         public bool AutoSend { get; set; }
 
-        [Display(Name = "Keep Ownership", Description = "Keep ownership & builtBy on blocks. If false, all blocks will be transferred to player that requested jump")]
+        [Display(Name = "Keep Ownership",
+            Description =
+                "Keep ownership & builtBy on blocks. If false, all blocks will be transferred to player that requested jump")]
         public bool KeepOwnership { get; set; }
 
         [Display(Name = "Jump Out Notification", Description = "Send Chat Notification when player Jump to other server.")]
