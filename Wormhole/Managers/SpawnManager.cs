@@ -75,6 +75,7 @@ namespace Wormhole.Managers
                     Sync.Players.SetControlledEntity(playerId.SteamId, cockpit);
                     cockpit.Pilot.SetPlayer(player);
                     Sync.Players.RevivePlayer(player);
+                    EntityRefresh.RefreshAroundGrid(cockpit.CubeGrid);
                 }
                 else
                     Log.Warn($"Detected character without identity. Clang magic may occur\ngrid: {cockpit.CubeGrid.DisplayName} cockpit: {cockpit.CustomName} identity id: {cockpit.Pilot.GetPlayerIdentityId()}");

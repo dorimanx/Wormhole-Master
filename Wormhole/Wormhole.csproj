@@ -185,6 +185,7 @@
   <ItemGroup>
     <Compile Include="ColorConverterExtensions.cs" />
     <Compile Include="HelpCommand.cs" />
+    <Compile Include="Managers\EntityRefresh.cs" />
     <Compile Include="Managers\ClientEffectsManager.cs" />
     <Compile Include="Managers\DestinationManager.cs" />
     <Compile Include="Managers\Events\GridTransferEvent.cs" />
