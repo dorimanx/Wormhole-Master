@@ -400,7 +400,7 @@ namespace Wormhole
                     MyAPIGateway.Utilities.SendMessage(JumpOut);
                 }
 
-                var objectBuilders = grids.Select(b => (MyObjectBuilder_CubeGrid)b.GetObjectBuilder()).ToList();
+                var objectBuilders = grids.Select(b => (MyObjectBuilder_CubeGrid)b?.GetObjectBuilder()).ToList();
 
                 static IEnumerable<long> GetIds(MyObjectBuilder_CubeBlock block)
                 {
