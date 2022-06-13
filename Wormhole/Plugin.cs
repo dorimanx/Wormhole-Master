@@ -43,10 +43,7 @@ namespace Wormhole
         private Gui _control;
         private const string AdminGatesBackupFolder = "grids_backup";
         public const string AdminGatesFolder = "admingates";
-        private Task _saveOnEnterTask;
 
-        // The actual task of saving the game on exit or enter
-        private Task _saveOnExitTask;
         private int _tick;
         private string _gridDir;
         private string _gridDirBackup;
@@ -469,13 +466,6 @@ namespace Wormhole
                 {
                     cubeGrid.Close();
                 }
-
-                // Saves the game if enabled in config.
-                if (!Config.SaveOnExit) return;
-
-                // (re)Starts the task if it has never been started o´r is done
-                if (_saveOnExitTask is null || _saveOnExitTask.IsCompleted)
-                    _saveOnExitTask = Torch.Save();
             }
         }
 
@@ -486,8 +476,6 @@ namespace Wormhole
         public void WormholeTransferIn(string wormholeName)
         {
             EnsureDirectoriesCreated();
-
-            var changes = false;
 
             // if file not null if file exists if file is done being sent and if file hasnt been received before
             foreach (var file in Directory.EnumerateFiles(_gridDir, "*.sbcB5")
@@ -531,7 +519,6 @@ namespace Wormhole
 
                 _transferManager.QueueIncomingTransfer(transferFile, fileTransferInfo);
 
-                changes = true;
                 var backupFileName = fileName;
                 if (File.Exists(Path.Combine(_gridDirBackup, backupFileName)))
                 {
@@ -547,14 +534,6 @@ namespace Wormhole
 
                 File.Delete(Path.Combine(_gridDir, fileName));
             }
-
-            // Saves game on enter if enabled in config.
-            if (!Config.SaveOnEnter) return;
-
-            if (!changes) return;
-
-            if (_saveOnEnterTask is null || _saveOnEnterTask.IsCompleted)
-                _saveOnEnterTask = Torch.Save();
         }
 
         #endregion
