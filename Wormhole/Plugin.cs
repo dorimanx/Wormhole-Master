@@ -400,7 +400,21 @@ namespace Wormhole
                     MyAPIGateway.Utilities.SendMessage(JumpOut);
                 }
 
-                var objectBuilders = grids.Select(b => (MyObjectBuilder_CubeGrid)b?.GetObjectBuilder()).ToList();
+                var objectBuilders = new List<MyObjectBuilder_CubeGrid>();
+
+                // added to clear bug when grid is null
+                foreach (var CubeGrid in grids)
+                {
+                    if (CubeGrid == null)
+                        continue;
+
+                    if ((MyObjectBuilder_CubeGrid)CubeGrid.GetObjectBuilder() == null)
+                        continue;
+
+                    objectBuilders.Add((MyObjectBuilder_CubeGrid)CubeGrid.GetObjectBuilder());
+                }
+
+                //var objectBuilders = grids.Select(b => (MyObjectBuilder_CubeGrid)b?.GetObjectBuilder()).ToList();
 
                 static IEnumerable<long> GetIds(MyObjectBuilder_CubeBlock block)
                 {
