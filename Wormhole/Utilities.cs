@@ -8,8 +8,11 @@ using System.Net.Sockets;
 using NLog;
 using Sandbox;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Character;
+using Sandbox.Game.Multiplayer;
+using Sandbox.ModAPI;
 using Torch.Mod;
 using Torch.Mod.Messages;
 using Torch.Utils;
@@ -17,6 +20,7 @@ using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Game.ObjectBuilders.Components;
+using VRage.ObjectBuilders;
 using VRage.Utils;
 using VRageMath;
 
@@ -285,8 +289,85 @@ namespace Wormhole
             GatePoint += direction * -2;
             return GatePoint + (direction * distance);
         }
+
+        private static readonly List<IMyPlayer> _playerCache = new List<IMyPlayer>();
+
+        public static IMyPlayer GetPlayerBySteamId(ulong steamId)
+        {
+            _playerCache.Clear();
+            MyAPIGateway.Players.GetPlayers(_playerCache);
+            return _playerCache.FirstOrDefault(p => p.SteamUserId == steamId);
+        }
+
+        public static void SaveShipsToFile(ulong steamId, MyObjectBuilder_CubeGrid[] grids_objectbuilders)
+        {
+            string FirstShipName = grids_objectbuilders.First().DisplayName;
+            string filenameexported = GetPlayerBySteamId(steamId).DisplayName.ToString() + "_" + DateTime.Now.ToShortDateString() + "_" + DateTime.Now.Millisecond + "_" + FirstShipName;
+            var a1 = Path.GetInvalidPathChars();
+            var b1 = Path.GetInvalidFileNameChars();
+
+            var arraychar = a1.Concat(b1);
+            foreach (char c in arraychar)
+            {
+                filenameexported = filenameexported.Replace(c.ToString(), ".");
+            }
+
+            SaveToFile(steamId, grids_objectbuilders, filenameexported);
+        }
+
+        private static string[] GetNecessaryDLCs(MyObjectBuilder_CubeGrid[] cubeGrids)
+        {
+            if (cubeGrids.IsNullOrEmpty())
+                return null;
+
+            HashSet<string> hashSet = new HashSet<string>();
+            for (int i = 0; i < cubeGrids.Length; i++)
+            {
+                foreach (MyObjectBuilder_CubeBlock builder in cubeGrids[i].CubeBlocks)
+                {
+                    MyCubeBlockDefinition cubeBlockDefinition = MyDefinitionManager.Static.GetCubeBlockDefinition(builder);
+                    if (cubeBlockDefinition != null && cubeBlockDefinition.DLCs != null && cubeBlockDefinition.DLCs.Length != 0)
+                    {
+                        for (int j = 0; j < cubeBlockDefinition.DLCs.Length; j++)
+                        {
+                            hashSet.Add(cubeBlockDefinition.DLCs[j]);
+                        }
+                    }
+                }
+            }
+            return hashSet.ToArray();
+        }
+
+        private static bool SaveToFile(ulong steamid, MyObjectBuilder_CubeGrid[] gridstotpob, string filenameexported)
+        {
+            string FirstShipName = gridstotpob.First().DisplayName;
+            MyObjectBuilder_ShipBlueprintDefinition myObjectBuilder_ShipBlueprintDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_ShipBlueprintDefinition>();
+            myObjectBuilder_ShipBlueprintDefinition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_ShipBlueprintDefinition)), MyUtils.StripInvalidChars(filenameexported));
+            myObjectBuilder_ShipBlueprintDefinition.DLCs = GetNecessaryDLCs(myObjectBuilder_ShipBlueprintDefinition.CubeGrids);
+            myObjectBuilder_ShipBlueprintDefinition.CubeGrids = gridstotpob;
+            myObjectBuilder_ShipBlueprintDefinition.RespawnShip = false;
+            myObjectBuilder_ShipBlueprintDefinition.DisplayName = FirstShipName;
+            myObjectBuilder_ShipBlueprintDefinition.OwnerSteamId = Sync.MyId;
+
+            //myObjectBuilder_ShipBlueprintDefinition.CubeGrids[0].DisplayName = blueprintDisplayName;
+            MyObjectBuilder_Definitions myObjectBuilder_Definitions = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
+            myObjectBuilder_Definitions.ShipBlueprints = new MyObjectBuilder_ShipBlueprintDefinition[1];
+            myObjectBuilder_Definitions.ShipBlueprints[0] = myObjectBuilder_ShipBlueprintDefinition;
+
+            string mypathdir = Plugin.Instance.storagepath + "\\OutgoingWormHoleShipsBackup\\" + steamid;
+            if (!Directory.Exists(mypathdir))
+                Directory.CreateDirectory(mypathdir);
+
+            string finalpath = Path.Combine(mypathdir, filenameexported + ".sbc");
+            var flag = MyObjectBuilderSerializer.SerializeXML(finalpath, false, myObjectBuilder_Definitions, null);
+            if (flag)
+                MyObjectBuilderSerializer.SerializePB(finalpath + MyObjectBuilderSerializer.ProtobufferExtension, true, myObjectBuilder_Definitions);
+
+            return flag;
+        }
     }
 }
+
 namespace System.Runtime.CompilerServices
 {
     internal class IsExternalInit { }

@@ -39,6 +39,7 @@ namespace Wormhole
         public static readonly Logger Log = LogManager.GetLogger("Wormhole");
 
         private Persistent<Config> _config;
+        public string storagepath;
 
         private Gui _control;
         private const string AdminGatesBackupFolder = "grids_backup";
@@ -63,6 +64,7 @@ namespace Wormhole
             base.Init(torch);
             Instance = this;
             SetupConfig();
+            storagepath = StoragePath;
 
             _clientEffectsManager = new(Torch);
             Torch.Managers.AddManager(_clientEffectsManager);
@@ -250,8 +252,9 @@ namespace Wormhole
                                 ProcessGateJump(gateDestination, grid, grids, wormholeDrive, gateViewModel, playerInCharge);
                                 break;
                             case InternalDestinationViewModel internalDestination:
-                                ProcessInternalGpsJump(internalDestination, grid, grids, wormholeDrive, gateViewModel,
-                                    playerInCharge);
+                                ProcessInternalGpsJump(internalDestination, grid, grids, wormholeDrive, gateViewModel, playerInCharge);
+                                break;
+                            default:
                                 break;
                         }
                     });
@@ -405,13 +408,12 @@ namespace Wormhole
                 // added to clear bug when grid is null
                 foreach (var CubeGrid in grids)
                 {
-                    if (CubeGrid == null)
+                    var OBEntBase = CubeGrid?.GetObjectBuilder();
+                    if (OBEntBase == null)
                         continue;
 
-                    if ((MyObjectBuilder_CubeGrid)CubeGrid.GetObjectBuilder() == null)
-                        continue;
-
-                    objectBuilders.Add((MyObjectBuilder_CubeGrid)CubeGrid.GetObjectBuilder());
+                    if (OBEntBase is MyObjectBuilder_CubeGrid OB)
+                        objectBuilders.Add(OB);
                 }
 
                 //var objectBuilders = grids.Select(b => (MyObjectBuilder_CubeGrid)b?.GetObjectBuilder()).ToList();
@@ -431,6 +433,7 @@ namespace Wormhole
                     .ToDictionary(static b => b, static b => Sync.Players.TryGetIdentity(b).GetObjectBuilder());
 
                 var sittingPlayerIdentityIds = new HashSet<long>();
+                var sittingPlayerSteamID = new HashSet<ulong>();
                 foreach (var cubeBlock in objectBuilders.SelectMany(static cubeGrid => cubeGrid.CubeBlocks))
                 {
                     if (!Config.ExportProjectorBlueprints)
@@ -452,6 +455,7 @@ namespace Wormhole
 
                     var playerSteamId = Sync.Players.TryGetSteamId(cockpit.Pilot.OwningPlayerIdentityId.Value);
                     sittingPlayerIdentityIds.Add(cockpit.Pilot.OwningPlayerIdentityId.Value);
+                    sittingPlayerSteamID.Add(playerSteamId);
                     Utilities.SendConnectToServer(ownerIp, playerSteamId);
                 }
 
@@ -472,6 +476,8 @@ namespace Wormhole
                         SourceDestinationId = dest.Id,
                         SourceGateName = gateViewModel.Name
                     });
+
+                Utilities.SaveShipsToFile(sittingPlayerSteamID.FirstElement(), objectBuilders.ToArray());
 
                 foreach (var identity in sittingPlayerIdentityIds.Select(Sync.Players.TryGetIdentity)
                     .Where(b => b.Character is { })) Utilities.KillCharacter(identity.Character);
