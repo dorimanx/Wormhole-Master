@@ -16,6 +16,7 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
 using Sandbox.ModAPI;
+using SpaceEngineers.Game.Weapons.Guns;
 using Torch;
 using Torch.API;
 using Torch.API.Plugins;
@@ -23,6 +24,7 @@ using Torch.Event;
 using Torch.Utils;
 using VRage.Game;
 using VRage.Game.Entity;
+using VRage.Game.ModAPI;
 using VRageMath;
 using Wormhole.Managers;
 using Wormhole.Managers.Events;
@@ -369,6 +371,25 @@ namespace Wormhole
                 };
 
                 Log.Info($"creating filetransfer: {transferFileInfo.CreateLogString()}");
+
+                foreach (IMyCubeGrid g in grids)
+                {
+                    if (g == null)
+                        continue;
+
+                    foreach (var Block in g.GetFatBlocks<MyLargeMissileTurret>())
+                    {
+                        if (Block is MyLargeMissileTurret MissleBlock)
+                        {
+                            var TargetGroup = MissleBlock.GetTargetingGroup();
+
+                            if (string.IsNullOrEmpty(TargetGroup) || TargetGroup == "Weapons" || TargetGroup == "Propulsion" || TargetGroup == "PowerSystems")
+                                continue;
+                            else
+                                MissleBlock.SetTargetingGroup(string.Empty);
+                        }
+                    }
+                }
 
                 var info = new OutgoingGridTransferEvent(transferFileInfo, dest, grids);
                 GridTransferEventShim.RaiseEvent(ref info);
