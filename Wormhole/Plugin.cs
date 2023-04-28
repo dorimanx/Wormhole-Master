@@ -14,6 +14,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Multiplayer;
+using Sandbox.Game.Weapons;
 using Sandbox.Game.World;
 using Sandbox.ModAPI;
 using SpaceEngineers.Game.Weapons.Guns;
@@ -377,16 +378,68 @@ namespace Wormhole
                     if (g == null)
                         continue;
 
-                    foreach (var Block in g.GetFatBlocks<MyLargeMissileTurret>())
+                    foreach (var Block in g.GetFatBlocks<MyUserControllableGun>())
                     {
                         if (Block is MyLargeMissileTurret MissleBlock)
                         {
-                            var TargetGroup = MissleBlock.GetTargetingGroup();
+                            try
+                            {
+                                var GanBase = MissleBlock.GunBase;
+                                if (GanBase == null)
+                                    GanBase = new MyGunBase();
 
-                            if (string.IsNullOrEmpty(TargetGroup) || TargetGroup == "Weapons" || TargetGroup == "Propulsion" || TargetGroup == "PowerSystems")
-                                continue;
-                            else
-                                MissleBlock.SetTargetingGroup(string.Empty);
+                                var TargetGroup = MissleBlock.GetTargetingGroup();
+
+                                if (string.IsNullOrEmpty(TargetGroup))
+                                    continue;
+
+                                if (TargetGroup == "Weapons" || TargetGroup == "Propulsion" || TargetGroup == "PowerSystems")
+                                    continue;
+                                else
+                                    MissleBlock.SetTargetingGroup(string.Empty);
+                            } catch { }
+                        }
+
+                        if (Block is MyLargeGatlingTurret GatlingBlock)
+                        {
+                            try
+                            {
+                                var GanBase = GatlingBlock.GunBase;
+                                if (GanBase == null)
+                                    GanBase = new MyGunBase();
+
+                                var TargetGroup = GatlingBlock.GetTargetingGroup();
+
+                                if (string.IsNullOrEmpty(TargetGroup))
+                                    continue;
+
+                                if (TargetGroup == "Weapons" || TargetGroup == "Propulsion" || TargetGroup == "PowerSystems")
+                                    continue;
+                                else
+                                    GatlingBlock.SetTargetingGroup(string.Empty);
+                            }
+                            catch { }
+                        }
+
+                        if (Block is MyLargeInteriorTurret InteriorTurretBlock)
+                        {
+                            try
+                            {
+                                var GanBase = InteriorTurretBlock.GunBase;
+                                if (GanBase == null)
+                                    GanBase = new MyGunBase();
+
+                                var TargetGroup = InteriorTurretBlock.GetTargetingGroup();
+
+                                if (string.IsNullOrEmpty(TargetGroup))
+                                    continue;
+
+                                if (TargetGroup == "Weapons" || TargetGroup == "Propulsion" || TargetGroup == "PowerSystems")
+                                    continue;
+                                else
+                                    InteriorTurretBlock.SetTargetingGroup(string.Empty);
+                            }
+                            catch { }
                         }
                     }
                 }
