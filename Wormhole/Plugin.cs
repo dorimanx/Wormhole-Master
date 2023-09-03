@@ -13,6 +13,7 @@ using ProtoBuf;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.Weapons;
 using Sandbox.Game.World;
@@ -373,16 +374,76 @@ namespace Wormhole
 
                 Log.Info($"creating filetransfer: {transferFileInfo.CreateLogString()}");
 
-                foreach (IMyCubeGrid g in grids)
+                try
                 {
-                    if (g == null)
-                        continue;
-
-                    foreach (var Block in g.GetFatBlocks<MyUserControllableGun>())
+                    foreach (IMyCubeGrid g in grids)
                     {
-                        if (Block is MyLargeMissileTurret MissleBlock)
+                        if (g == null)
+                            continue;
+
+                        foreach (var ProjBlockMain in g.GetFatBlocks<MyProjectorBase>())
                         {
-                            try
+                            if (ProjBlockMain.CubeGrid != null)
+                            {
+                                foreach (var ProjBlock in ProjBlockMain.CubeGrid.GetFatBlocks<MyUserControllableGun>())
+                                {
+                                    if (ProjBlock is MyLargeMissileTurret ProjMissleBlock)
+                                    {
+                                        var GanBase = ProjMissleBlock.GunBase;
+                                        if (GanBase == null)
+                                            GanBase = new Sandbox.Game.Weapons.MyGunBase();
+
+                                        var TargetGroup = ProjMissleBlock.GetTargetingGroup();
+
+                                        if (string.IsNullOrEmpty(TargetGroup))
+                                            continue;
+
+                                        if (TargetGroup == "Weapons" || TargetGroup == "Propulsion" || TargetGroup == "PowerSystems")
+                                            continue;
+                                        else
+                                            ProjMissleBlock.SetTargetingGroup(string.Empty);
+                                    }
+
+                                    if (ProjBlock is MyLargeGatlingTurret ProjGatlingBlock)
+                                    {
+                                        var GanBase = ProjGatlingBlock.GunBase;
+                                        if (GanBase == null)
+                                            GanBase = new Sandbox.Game.Weapons.MyGunBase();
+
+                                        var TargetGroup = ProjGatlingBlock.GetTargetingGroup();
+
+                                        if (string.IsNullOrEmpty(TargetGroup))
+                                            continue;
+
+                                        if (TargetGroup == "Weapons" || TargetGroup == "Propulsion" || TargetGroup == "PowerSystems")
+                                            continue;
+                                        else
+                                            ProjGatlingBlock.SetTargetingGroup(string.Empty);
+                                    }
+
+                                    if (ProjBlock is MyLargeInteriorTurret ProjInteriorTurretBlock)
+                                    {
+                                        var GanBase = ProjInteriorTurretBlock.GunBase;
+                                        if (GanBase == null)
+                                            GanBase = new Sandbox.Game.Weapons.MyGunBase();
+
+                                        var TargetGroup = ProjInteriorTurretBlock.GetTargetingGroup();
+
+                                        if (string.IsNullOrEmpty(TargetGroup))
+                                            continue;
+
+                                        if (TargetGroup == "Weapons" || TargetGroup == "Propulsion" || TargetGroup == "PowerSystems")
+                                            continue;
+                                        else
+                                            ProjInteriorTurretBlock.SetTargetingGroup(string.Empty);
+                                    }
+                                }
+                            }
+                        }
+
+                        foreach (var Block in g.GetFatBlocks<MyUserControllableGun>())
+                        {
+                            if (Block is MyLargeMissileTurret MissleBlock)
                             {
                                 var GanBase = MissleBlock.GunBase;
                                 if (GanBase == null)
@@ -397,12 +458,9 @@ namespace Wormhole
                                     continue;
                                 else
                                     MissleBlock.SetTargetingGroup(string.Empty);
-                            } catch { }
-                        }
+                            }
 
-                        if (Block is MyLargeGatlingTurret GatlingBlock)
-                        {
-                            try
+                            if (Block is MyLargeGatlingTurret GatlingBlock)
                             {
                                 var GanBase = GatlingBlock.GunBase;
                                 if (GanBase == null)
@@ -418,12 +476,8 @@ namespace Wormhole
                                 else
                                     GatlingBlock.SetTargetingGroup(string.Empty);
                             }
-                            catch { }
-                        }
 
-                        if (Block is MyLargeInteriorTurret InteriorTurretBlock)
-                        {
-                            try
+                            if (Block is MyLargeInteriorTurret InteriorTurretBlock)
                             {
                                 var GanBase = InteriorTurretBlock.GunBase;
                                 if (GanBase == null)
@@ -439,10 +493,9 @@ namespace Wormhole
                                 else
                                     InteriorTurretBlock.SetTargetingGroup(string.Empty);
                             }
-                            catch { }
                         }
                     }
-                }
+                } catch { };
 
                 var info = new OutgoingGridTransferEvent(transferFileInfo, dest, grids);
                 GridTransferEventShim.RaiseEvent(ref info);
