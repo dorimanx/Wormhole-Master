@@ -21,6 +21,7 @@ using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Game.ObjectBuilders.Components;
 using VRage.ObjectBuilders;
+using VRage.ObjectBuilders.Private;
 using VRage.Utils;
 using VRageMath;
 
@@ -341,7 +342,7 @@ namespace Wormhole
         private static bool SaveToFile(ulong steamid, MyObjectBuilder_CubeGrid[] gridstotpob, string filenameexported)
         {
             string FirstShipName = gridstotpob.First().DisplayName;
-            MyObjectBuilder_ShipBlueprintDefinition myObjectBuilder_ShipBlueprintDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_ShipBlueprintDefinition>();
+            MyObjectBuilder_ShipBlueprintDefinition myObjectBuilder_ShipBlueprintDefinition = MyObjectBuilderSerializerKeen.CreateNewObject<MyObjectBuilder_ShipBlueprintDefinition>();
             myObjectBuilder_ShipBlueprintDefinition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_ShipBlueprintDefinition)), MyUtils.StripInvalidChars(filenameexported));
             myObjectBuilder_ShipBlueprintDefinition.DLCs = GetNecessaryDLCs(myObjectBuilder_ShipBlueprintDefinition.CubeGrids);
             myObjectBuilder_ShipBlueprintDefinition.CubeGrids = gridstotpob;
@@ -350,7 +351,7 @@ namespace Wormhole
             myObjectBuilder_ShipBlueprintDefinition.OwnerSteamId = Sync.MyId;
 
             //myObjectBuilder_ShipBlueprintDefinition.CubeGrids[0].DisplayName = blueprintDisplayName;
-            MyObjectBuilder_Definitions myObjectBuilder_Definitions = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
+            MyObjectBuilder_Definitions myObjectBuilder_Definitions = MyObjectBuilderSerializerKeen.CreateNewObject<MyObjectBuilder_Definitions>();
             myObjectBuilder_Definitions.ShipBlueprints = new MyObjectBuilder_ShipBlueprintDefinition[1];
             myObjectBuilder_Definitions.ShipBlueprints[0] = myObjectBuilder_ShipBlueprintDefinition;
 
@@ -359,9 +360,9 @@ namespace Wormhole
                 Directory.CreateDirectory(mypathdir);
 
             string finalpath = Path.Combine(mypathdir, filenameexported + ".sbc");
-            var flag = MyObjectBuilderSerializer.SerializeXML(finalpath, false, myObjectBuilder_Definitions, null);
+            var flag = MyObjectBuilderSerializerKeen.SerializeXML(finalpath, false, myObjectBuilder_Definitions, null);
             if (flag)
-                MyObjectBuilderSerializer.SerializePB(finalpath + MyObjectBuilderSerializer.ProtobufferExtension, true, myObjectBuilder_Definitions);
+                MyObjectBuilderSerializerKeen.SerializePB(finalpath + MyObjectBuilderSerializerKeen.ProtobufferExtension, true, myObjectBuilder_Definitions);
 
             return flag;
         }
